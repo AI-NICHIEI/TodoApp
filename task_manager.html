@@ -466,6 +466,88 @@ function addManualTask(){
   switchTab('tasks');renderAll();
 }
 
+
+function addDays(baseDate, days){
+  const d=new Date(baseDate+'T00:00:00');
+  d.setDate(d.getDate()+days);
+  return d.toISOString().split('T')[0];
+}
+function nextWeekday(baseDate, weekday){
+  const d=new Date(baseDate+'T00:00:00');
+  let diff=(weekday-d.getDay()+7)%7;
+  if(diff===0)diff=7;
+  d.setDate(d.getDate()+diff);
+  return d.toISOString().split('T')[0];
+}
+function normalizePerson(line,members){
+  const names=[...PEOPLE.filter(p=>p!=='全員'),...String(members||'').split(/[、,，\s]+/).filter(Boolean),'その他'];
+  for(const n of names){if(n&&line.includes(n))return n;}
+  const m=line.match(/^\s*[・\-－*]?\s*([^：:]{1,6})[：:]/);
+  return m&&m[1] ? m[1].trim() : 'その他';
+}
+function detectDue(line,meetingDate){
+  const base=meetingDate||today();
+  const ym=line.match(/(20\d{2})[\/\-年](\d{1,2})[\/\-月](\d{1,2})日?/);
+  if(ym)return ym[1]+'-'+String(ym[2]).padStart(2,'0')+'-'+String(ym[3]).padStart(2,'0');
+  const md=line.match(/(\d{1,2})月(\d{1,2})日/);
+  if(md){const y=new Date(base+'T00:00:00').getFullYear();return y+'-'+String(md[1]).padStart(2,'0')+'-'+String(md[2]).padStart(2,'0');}
+  const days=line.match(/(\d+)日以内/);
+  if(days)return addDays(base,parseInt(days[1],10));
+  if(/今日中|本日中|本日まで|今日まで/.test(line))return base;
+  if(/明日中|明日まで/.test(line))return addDays(base,1);
+  if(/明後日/.test(line))return addDays(base,2);
+  if(/今週中|週内/.test(line))return nextWeekday(base,5);
+  if(/来週中/.test(line))return addDays(nextWeekday(base,5),7);
+  const wdMap={'日':0,'月':1,'火':2,'水':3,'木':4,'金':5,'土':6};
+  const wd=line.match(/来週([日月火水木金土])曜日?/);
+  if(wd)return addDays(nextWeekday(base,wdMap[wd[1]]),7);
+  const thisWd=line.match(/([日月火水木金土])曜日?まで/);
+  if(thisWd)return nextWeekday(base,wdMap[thisWd[1]]);
+  if(/月末|今月末/.test(line)){const d=new Date(base+'T00:00:00');return new Date(d.getFullYear(),d.getMonth()+1,0).toISOString().split('T')[0];}
+  return addDays(base,7);
+}
+function cleanTaskTitle(line,person){
+  let s=line.replace(/^\s*[・\-－*]\s*/,'').trim();
+  s=s.replace(new RegExp('^'+person+'[：:]'),'').trim();
+  s=s.replace(/(が|は|より)?\s*(今日中|本日中|明日中|明後日|今週中|来週中|週内|月末|今月末|\d+日以内|\d{1,2}月\d{1,2}日まで|来週[日月火水木金土]曜日?まで|[日月火水木金土]曜日?まで|20\d{2}[\/\-年]\d{1,2}[\/\-月]\d{1,2}日?まで?)\s*(に|までに|まで)?/g,'');
+  s=s.replace(/すること|お願いします|してください|完了する|対応する/g,'').trim();
+  s=s.replace(/^[：:、,。\s]+|[。\s]+$/g,'');
+  return s || line.trim();
+}
+function extractTasksLocal(body,meetingDate,members){
+  const taskWords=/(まで|期限|担当|宿題|TODO|ToDo|タスク|対応|確認|提出|作成|送付|連絡|共有|準備|手配|発注|回収|修正|入力|報告|調整|確認する|提出する|作成する|送付する|連絡する)/i;
+  const lines=body.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  const out=[];
+  lines.forEach(line=>{
+    if(!taskWords.test(line))return;
+    const person=normalizePerson(line,members);
+    const due=detectDue(line,meetingDate);
+    const title=cleanTaskTitle(line,person);
+    if(title.length<3)return;
+    if(out.some(t=>t.title===title&&t.person===person))return;
+    out.push({title,person,due,status:'todo'});
+  });
+  return out;
+}
+function makeAiMinutes(title,date,members,body,extracted){
+  const lines=body.split(/\n+/).map(x=>x.replace(/^\s*[・\-－*]\s*/,'').trim()).filter(Boolean);
+  const decisions=lines.filter(l=>/(決定|承認|実施|採用|確定|合意)/.test(l));
+  const issues=lines.filter(l=>/(課題|問題|未定|不足|遅れ|懸念|確認必要|要確認)/.test(l));
+  let txt='【会議名】\n'+title+'\n\n';
+  txt+='【会議日】\n'+fmtDate(date||today())+'\n\n';
+  if(members)txt+='【参加者】\n'+members+'\n\n';
+  txt+='【議事要約】\n';
+  if(lines.length){lines.slice(0,8).forEach(l=>{txt+='・'+l+'\n';});}else{txt+='・入力メモから要約項目を作成できませんでした\n';}
+  txt+='\n【決定事項】\n';
+  if(decisions.length){decisions.forEach(l=>{txt+='・'+l+'\n';});}else{txt+='・明確な決定事項はメモ内では確認できません\n';}
+  txt+='\n【課題・確認事項】\n';
+  if(issues.length){issues.forEach(l=>{txt+='・'+l+'\n';});}else{txt+='・明確な課題はメモ内では確認できません\n';}
+  txt+='\n【抽出タスク】\n';
+  if(extracted.length){extracted.forEach(t=>{txt+='・'+t.person+'：'+t.title+'（期限：'+t.due+'）\n';});}else{txt+='・タスク候補は見つかりませんでした\n';}
+  txt+='\n【元メモ】\n'+body;
+  return txt;
+}
+
 function getMinutesFormValues(){
   return{title:document.getElementById('meeting-title').value.trim(),date:document.getElementById('meeting-date').value,members:document.getElementById('meeting-members').value.trim(),body:document.getElementById('minutes-input').value.trim()};
 }
@@ -479,28 +561,28 @@ function saveMinutesOnly(){
 async function saveAndExtract(){
   const{title,date,members,body}=getMinutesFormValues();
   if(!title||!body){alert('タイトルとメモ本文を入力してください');return}
-  const mid='m'+nextMinutesId++;
-  minutesList.push({id:mid,title,date:date||today(),members,body,taskIds:[],savedAt:new Date().toISOString()});
   const res=document.getElementById('extracted-results');
-  res.innerHTML='<div style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span><br><br>AIがタスクを解析中...</div>';
-  try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,
-        system:'あなたは会議議事録からタスクを抽出するAIです。必ずJSON配列のみを返してください。マークダウンや説明文は不要です。フォーマット：[{"title":"タスク内容","person":"担当者名","due":"YYYY-MM-DD","status":"todo"}]。期限が明確でない場合は今日から7日後を使用。今日の日付は'+today()+'です。担当者が不明な場合は"その他"。',
-        messages:[{role:'user',content:'以下の議事録からタスクを抽出してください：\n'+body}]})});
-    const data=await resp.json();
-    const raw=data.content.filter(c=>c.type==='text').map(c=>c.text).join('');
-    const extracted=JSON.parse(raw.replace(/```json|```/g,'').trim());
-    if(!Array.isArray(extracted)||!extracted.length){res.innerHTML='<div class="card-box"><p style="color:#aaa;font-size:14px"><i class="ti ti-info-circle"></i> タスクが見つかりませんでした。議事録は保存されました。</p></div>';renderAll();return;}
-    const safeJson=JSON.stringify(extracted).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    let html='<div class="card-box"><h3 style="color:var(--main-dark)"><i class="ti ti-check"></i>'+extracted.length+'件のタスクを抽出しました</h3>';
-    extracted.forEach(t=>{const dl=daysLabel(t.due,'todo');html+='<div class="info-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div class="info-val" style="font-size:14px;flex:1">'+t.title+'</div><span class="days-badge '+dl.cls+'">'+dl.txt+'</span></div><div style="display:flex;gap:10px;margin-top:7px"><span class="meta-chip"><div class="avatar">'+initials(t.person||'？')+'</div>'+(t.person||'その他')+'</span><span class="meta-chip"><i class="ti ti-calendar"></i>'+t.due+'</span></div></div>';});
-    html+='<button class="big-btn btn-primary" style="margin-top:4px" onclick="registerExtracted(\''+safeJson+'\',\''+mid+'\')"><i class="ti ti-plus"></i>タスクに登録する</button></div>';
-    res.innerHTML=html;renderAll();
-  }catch(e){res.innerHTML='<div class="card-box"><p style="color:var(--red);font-size:14px"><i class="ti ti-alert-circle"></i> 抽出に失敗しました。議事録は保存済みです。</p></div>';renderAll();}
+  res.innerHTML='<div style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span><br><br>議事録を整形してタスクを抽出中...</div>';
+  await new Promise(r=>setTimeout(r,250));
+  const extracted=extractTasksLocal(body,date||today(),members);
+  const aiBody=makeAiMinutes(title,date||today(),members,body,extracted);
+  const mid='m'+nextMinutesId++;
+  minutesList.push({id:mid,title,date:date||today(),members,body:aiBody,taskIds:[],savedAt:new Date().toISOString()});
+  if(!extracted.length){
+    res.innerHTML='<div class="card-box"><h3><i class="ti ti-notebook"></i> 議事録を保存しました</h3><p style="color:#888;font-size:14px;line-height:1.7">タスク候補は見つかりませんでした。<br>「担当者」「期限」「提出・確認・連絡・作成」などを含めると抽出しやすくなります。</p></div>';
+    renderAll();
+    return;
+  }
+  const safeJson=encodeURIComponent(JSON.stringify(extracted));
+  let html='<div class="card-box"><h3 style="color:var(--main-dark)"><i class="ti ti-check"></i>'+extracted.length+'件のタスクを抽出しました</h3>';
+  extracted.forEach(t=>{const dl=daysLabel(t.due,'todo');html+='<div class="info-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div class="info-val" style="font-size:14px;flex:1">'+escHtml(t.title)+'</div><span class="days-badge '+dl.cls+'">'+dl.txt+'</span></div><div style="display:flex;gap:10px;margin-top:7px"><span class="meta-chip"><div class="avatar">'+initials(t.person||'？')+'</div>'+escHtml(t.person||'その他')+'</span><span class="meta-chip"><i class="ti ti-calendar"></i>'+t.due+'</span></div></div>';});
+  html+='<button class="big-btn btn-primary" style="margin-top:4px" onclick="registerExtracted(\''+safeJson+'\',\''+mid+'\')"><i class="ti ti-plus"></i>タスクに登録する</button>';
+  html+='<button class="big-btn btn-secondary" onclick="switchTab(\'minutes\')"><i class="ti ti-notebook"></i>保存した議事録を見る</button></div>';
+  res.innerHTML=html;
+  renderAll();
 }
-function registerExtracted(jsonStr,minutesId){
-  const arr=JSON.parse(jsonStr.replace(/\\'/g,"'"));
+function registerExtractedfunction registerExtracted(jsonStr,minutesId){
+  const arr=JSON.parse(decodeURIComponent(jsonStr));
   const newIds=[];
   arr.forEach(t=>{const nid=nextId++;tasks.push({id:nid,title:t.title,person:t.person||'その他',due:t.due,status:'todo',fromMeeting:true,minutesId:minutesId||null});newIds.push(nid);});
   if(minutesId){minutesList=minutesList.map(m=>m.id===minutesId?Object.assign({},m,{taskIds:(m.taskIds||[]).concat(newIds)}):m)}
