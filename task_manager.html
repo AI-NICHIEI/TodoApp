@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>会議タスク管理 - 産廃・砕石</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.9.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -174,7 +175,7 @@ textarea:focus{outline:none;border-color:var(--main)}
   <div class="header">
     <div class="header-text">
       <h1><i class="ti ti-leaf"></i> 会議タスク管理</h1>
-      <p>産業廃棄物処理・砕石販売 現場管理システム</p>
+      <p>産業廃棄物処理・砕石販売 現場管理システム（全員共有・同期モード）</p>
     </div>
   </div>
   <div class="tab-bar">
@@ -294,26 +295,41 @@ textarea:focus{outline:none;border-color:var(--main)}
 </div>
 
 <script>
+// --- ⚠️ 重要：ここにステップ3のデータを貼り付けてください ⚠️ ---
+const SUPABASE_URL = "https://uzjftccxoipspazrtuvl.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_EtJx9KqlB3v7rtD5uIBOtg_U1mvCbCG";
+// ----------------------------------------------------------------
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 let members=['園美','奈美','真美','恵一','美佳','矢板','月井','北浦','美咲','明日香','関根','吉岡'];
 let filterPerson='全員';
 let currentMode='brief';
 
-let tasks=[
-  {id:1,title:'産廃搬出計画書の作成',person:'園美',due:'2026-05-28',status:'progress',fromMeeting:false,minutesId:null},
-  {id:2,title:'砕石の在庫確認・発注',person:'吉岡',due:'2026-05-31',status:'todo',fromMeeting:false,minutesId:null},
-  {id:3,title:'取引先への見積書送付',person:'奈美',due:'2026-05-27',status:'todo',fromMeeting:false,minutesId:null},
-  {id:4,title:'車両点検記録の提出',person:'矢板',due:'2026-06-10',status:'todo',fromMeeting:false,minutesId:null},
-  {id:5,title:'Q1売上報告書の確認',person:'恵一',due:'2026-05-20',status:'done',fromMeeting:false,minutesId:null},
-  {id:6,title:'新規取引先との契約書確認',person:'美佳',due:'2026-06-05',status:'todo',fromMeeting:false,minutesId:null},
-];
-let nextId=7;
-let minutesList=[
-  {id:'m1',title:'5月定例会議',date:'2026-05-20',members:'園美、吉岡、奈美、矢板、恵一',body:'・Q1売上は目標比95%。恵一より月末までに分析レポートを提出する。\n・砕石の在庫が残り少ない。吉岡が今月末までに発注を完了すること。\n・新規取引先からの見積依頼あり。奈美が27日までに送付する。\n・産廃搬出の日程調整が必要。園美が計画書を作成し28日までに共有する。',taskIds:[1,2,3,5],savedAt:'2026-05-20T10:30:00'},
-  {id:'m2',title:'車両管理ミーティング',date:'2026-05-15',members:'矢板、月井、北浦',body:'・全車両の点検記録が未提出のものがある。矢板が6月10日までに取りまとめて提出すること。\n・北浦の担当車両で軽微な不具合を確認。早急に整備工場へ連絡する。\n・燃費データの集計を月井が担当する。',taskIds:[4],savedAt:'2026-05-15T14:00:00'}
-];
-let nextMinutesId=3;
+let tasks=[];
+let minutesList=[];
 let pendingTasks=[];
 let pendingMinutesId=null;
+
+// 起動時にデータベースから最新データを読み込む関数
+async function loadDataFromDatabase() {
+  try {
+    // 1. タスクの読み込み
+    const { data: dbTasks, error: err1 } = await supabase.from('task_list').select('*').order('id', { ascending: true });
+    if (err1) throw err1;
+    tasks = dbTasks || [];
+
+    // 2. 議事録の読み込み
+    const { data: dbMinutes, error: err2 } = await supabase.from('minutes_list').select('*');
+    if (err2) throw err2;
+    minutesList = dbMinutes || [];
+
+    renderAll();
+  } catch (e) {
+    console.error("データ読み込み失敗:", e);
+    alert("データベースとの通信に失敗しました。URLや鍵を確認してください。");
+  }
+}
 
 function today(){return new Date().toISOString().split('T')[0]}
 function daysLeft(due){return Math.ceil((new Date(due)-new Date(today()))/(1000*60*60*24))}
@@ -331,7 +347,7 @@ function statusDot(s){return s==='todo'?'dot-todo':s==='progress'?'dot-progress'
 function statusLabel(s){return s==='todo'?'未着手':s==='progress'?'進行中':'完了'}
 function initials(name){return (name||'？').slice(0,2)}
 function fmtDate(d){if(!d)return '';const[y,m,dd]=d.split('-');return y+'年'+parseInt(m)+'月'+parseInt(dd)+'日'}
-function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function isWide(){return window.innerWidth>=768}
 
 function updatePromptText(){
@@ -344,7 +360,7 @@ function updatePromptText(){
 【ルール】
 1. 「箇条書きで、要点を絞って簡潔に」まとめてください。長い会議でも重要な内容が1分で把握できるように整理すること。
 2. 決定事項には、必ず「誰が（担当者）」「何を（タスク）」「いつまでに（期限）」やるかを明確に紐付けて記載してください。
-3. 今月の目標（例:目標50%未達など）に対して遅れている事実や、会話内で出た「未達の具体的な原因」「今後の改善策・次の打ち手」は必ず漏らさず箇ポ書きで抽出してください。
+3. 今月の目標（例:目標50%未達など）に対して遅れている事実や、会話内で出た「未達の具体的な原因」「今後の改善策・次の打ち手」は必ず漏らさず箇条書きで抽出してください。
 4. 「〜を強化する」「頑張る」といった抽象的な精神論の発言はビジネス事実に変換し、「何を何件やるか」など可能な限り具体的なアクションとして記録してください。`;
 
   const detailText = `あなたは会議議事録の作成を支援する優秀なアシスタントです。
@@ -389,7 +405,6 @@ function renderAll(){renderSummary();renderFilters();renderTasks();renderMinutes
 function renderMembers(){
   const el=document.getElementById('member-list');
   if(!el)return;
-  if(!members.length){el.innerHTML='<div class="empty" style="padding:20px"><i class="ti ti-user-off"></i>担当者がいません</div>';return}
   el.innerHTML=members.map((m,i)=>{
     const cnt=tasks.filter(t=>t.person===m).length;
     return '<div class="member-row">'+
@@ -417,7 +432,7 @@ function editMember(i){
   document.getElementById('modal-area').innerHTML=
     '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'+
-    '<h3 style="margin-bottom:0;color:var(--main-dark)"><i class="ti ti-pencil"></i> 担当者名を変更</h3>'+
+    '<h3 style="margin-bottom:0;color(--main-dark)"><i class="ti ti-pencil"></i> 担当者名を変更</h3>'+
     '<button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1">&times;</button></div>'+
     '<div class="form-row"><label>現在の名前</label><div style="padding:10px 14px;background:var(--gray-light);border-radius:10px;font-size:15px;font-weight:600;color:#555">'+oldName+'</div></div>'+
     '<div class="form-row"><label>新しい名前</label><input id="edit-member-input" type="text" value="'+oldName+'" maxlength="10" style="width:100%;padding:12px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;color:#333;font-size:15px;font-family:inherit"></div>'+
@@ -430,20 +445,15 @@ function editMember(i){
 function confirmEditMember(i){
   const newName=document.getElementById('edit-member-input').value.trim();
   if(!newName){alert('名前を入力してください');return}
-  if(members.includes(newName)&&members[i]!==newName){alert('同じ名前の担当者が既に存在します');return}
   const oldName=members[i];
   members[i]=newName;
-  tasks=tasks.map(t=>t.person===oldName?Object.assign({},t,{person:newName}):t);
   closeModal();renderAll();
 }
 
 function deleteMember(i){
   const name=members[i];
-  const cnt=tasks.filter(t=>t.person===name).length;
-  const msg=cnt>0?'「'+name+'」を削除しますか？\n\nこの担当者のタスクが'+cnt+'件あります。\nタスクの担当者は「その他」に変更されます。':'「'+name+'」を削除しますか？';
-  if(!confirm(msg))return;
+  if(!confirm('「'+name+'」を削除しますか？'))return;
   members.splice(i,1);
-  if(cnt>0) tasks=tasks.map(t=>t.person===name?Object.assign({},t,{person:'その他'}):t);
   if(filterPerson===name)filterPerson='全員';
   renderAll();
 }
@@ -469,15 +479,15 @@ function setFilter(p){filterPerson=p;renderAll()}
 function taskCardHtml(t){
   const uc=urgencyClass(t.due,t.status);
   const dl=daysLabel(t.due,t.status);
-  const mtg=t.minutesId?minutesList.find(m=>m.id===t.minutesId):null;
+  const mtg=t.minutes_id?minutesList.find(m=>m.id===t.minutes_id):null;
   const progressCls=(t.status==='progress'&&!uc)?'in-progress-card':'';
   return '<div class="task-card '+uc+' '+progressCls+'" onclick="openTask('+t.id+')">'+
-    '<div class="task-top"><div class="task-title">'+t.title+'</div><span class="days-badge '+dl.cls+'">'+dl.txt+'</span></div>'+
+    '<div class="task-top"><div class="task-title">'+escHtml(t.title)+'</div><span class="days-badge '+dl.cls+'">'+dl.txt+'</span></div>'+
     '<div class="task-meta">'+
     '<span class="meta-chip"><div class="avatar">'+initials(t.person)+'</div>'+t.person+'</span>'+
     '<span class="meta-chip"><i class="ti ti-calendar"></i>'+t.due+'</span>'+
     (mtg?'<span class="meeting-badge" onclick="event.stopPropagation();openMinutesDetail(\''+mtg.id+'\')"><i class="ti ti-notebook"></i>'+mtg.title+'</span>':'')+
-    (t.fromMeeting&&!t.minutesId?'<span class="meeting-badge"><i class="ti ti-sparkles"></i>AI抽出</span>':'')+
+    (t.from_meeting&&!t.minutes_id?'<span class="meeting-badge"><i class="ti ti-sparkles"></i>AI抽出</span>':'')+
     '</div></div>';
 }
 
@@ -521,13 +531,13 @@ function renderMinutes(){
   if(!minutesList.length){el.innerHTML='<div class="empty" style="grid-column:1/-1"><i class="ti ti-notebook"></i>議事録がありません</div>';return}
   const sorted=[...minutesList].sort((a,b)=>b.date.localeCompare(a.date));
   function mHtml(m){
-    const linked=tasks.filter(t=>m.taskIds&&m.taskIds.includes(t.id));
+    const linked=tasks.filter(t=>m.task_ids && (Array.isArray(m.task_ids) ? m.task_ids.includes(t.id) : false));
     return '<div class="minutes-card" onclick="openMinutesDetail(\''+m.id+'\')">'+
-      '<div class="minutes-card-top"><div class="minutes-title"><i class="ti ti-notebook" style="color:var(--main);margin-right:5px"></i>'+m.title+'</div>'+
+      '<div class="minutes-card-top"><div class="minutes-title"><i class="ti ti-notebook" style="color:var(--main);margin-right:5px"></i>'+escHtml(m.title)+'</div>'+
       '<div style="font-size:12px;color:#aaa;white-space:nowrap">'+fmtDate(m.date)+'</div></div>'+
-      '<div class="minutes-meta">'+(m.members?'<span class="meta-chip"><i class="ti ti-users"></i>'+m.members+'</span>':'')+
+      '<div class="minutes-meta">'+(m.members?'<span class="meta-chip"><i class="ti ti-users"></i>'+escHtml(m.members+'')+'</span>':'')+
       (linked.length?'<span class="tag tag-tasks"><i class="ti ti-list-check" style="font-size:11px"></i> タスク'+linked.length+'件</span>':'<span class="tag tag-memo">メモのみ</span>')+
-      '</div><div class="minutes-preview">'+m.body+'</div></div>';
+      '</div><div class="minutes-preview">'+escHtml(m.body)+'</div></div>';
   }
   const col1=sorted.filter((_,i)=>i%2===0);
   const col2=sorted.filter((_,i)=>i%2===1);
@@ -540,21 +550,21 @@ function renderMinutes(){
 
 function openMinutesDetail(id){
   const m=minutesList.find(x=>x.id===id);if(!m)return;
-  const linked=tasks.filter(t=>m.taskIds&&m.taskIds.includes(t.id));
+  const linked=tasks.filter(t=>m.task_ids && (Array.isArray(m.task_ids) ? m.task_ids.includes(t.id) : false));
   let taskHtml='';
   if(linked.length){
     taskHtml='<div style="margin-bottom:12px"><div class="info-label" style="margin-bottom:6px">関連タスク（'+linked.length+'件）</div>';
-    linked.forEach(t=>{const dl=daysLabel(t.due,t.status);taskHtml+='<div class="task-chip"><span class="status-dot '+statusDot(t.status)+'" style="width:7px;height:7px"></span>'+t.person+'：'+t.title+'<span class="days-badge '+dl.cls+'" style="font-size:10px;padding:2px 7px">'+dl.txt+'</span></div>';});
+    linked.forEach(t=>{const dl=daysLabel(t.due,t.status);taskHtml+='<div class="task-chip"><span class="status-dot '+statusDot(t.status)+'" style="width:7px;height:7px"></span>'+t.person+'：'+escHtml(t.title)+'<span class="days-badge '+dl.cls+'" style="font-size:10px;padding:2px 7px">'+dl.txt+'</span></div>';});
     taskHtml+='</div>';
   }
   document.getElementById('modal-area').innerHTML=
     '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:8px">'+
-    '<h3 style="margin-bottom:0;font-size:17px;color:var(--main-dark)">'+m.title+'</h3>'+
+    '<h3 style="margin-bottom:0;font-size:17px;color:var(--main-dark)">'+escHtml(m.title)+'</h3>'+
     '<button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1">&times;</button></div>'+
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+
     '<span class="meta-chip"><i class="ti ti-calendar"></i>'+fmtDate(m.date)+'</span>'+
-    (m.members?'<span class="meta-chip"><i class="ti ti-users"></i>'+m.members+'</span>':'')+
+    (m.members?'<span class="meta-chip"><i class="ti ti-users"></i>'+escHtml(m.members+'')+'</span>':'')+
     '</div>'+taskHtml+
     '<div class="info-label" style="margin-bottom:6px">議事録・メモ</div>'+
     '<div class="minutes-body">'+escHtml(m.body)+'</div>'+
@@ -562,11 +572,12 @@ function openMinutesDetail(id){
     '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i>閉じる</button>'+
     '</div></div>';
 }
-function deleteMinutes(id){
-  if(!confirm('この議事録を削除しますか？\n（関連タスクは残ります）'))return;
-  minutesList=minutesList.filter(m=>m.id!==id);
-  tasks=tasks.map(t=>t.minutesId===id?Object.assign({},t,{minutesId:null}):t);
-  closeModal();renderAll();
+
+async function deleteMinutes(id){
+  if(!confirm('この議事録を削除しますか？'))return;
+  await supabase.from('minutes_list').delete().eq('id', id);
+  closeModal();
+  loadDataFromDatabase();
 }
 
 function openTask(id){
@@ -575,7 +586,7 @@ function openTask(id){
   const ns=t.status==='todo'?'progress':t.status==='progress'?'done':'todo';
   const nl=ns==='progress'?'進行中にする':ns==='done'?'完了にする':'未着手に戻す';
   const ni=ns==='progress'?'ti-player-play':ns==='done'?'ti-check':'ti-rotate-clockwise';
-  const mtg=t.minutesId?minutesList.find(m=>m.id===t.minutesId):null;
+  const mtg=t.minutes_id?minutesList.find(m=>m.id===t.minutes_id):null;
   const personOpts=members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('')
     +'<option value="その他"'+(t.person==='その他'?' selected':'')+'>その他</option>';
   document.getElementById('modal-area').innerHTML=
@@ -591,28 +602,38 @@ function openTask(id){
     '<div class="info-card"><div class="info-label">期限</div>'+
     '<input type="date" id="task-edit-due" value="'+t.due+'" style="width:100%;padding:9px 12px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;color:#333;font-family:inherit;margin-top:4px"></div>'+
     '<div class="info-card"><div class="info-label">ステータス</div><div class="info-val" style="display:flex;align-items:center;gap:5px;margin-top:4px"><span class="status-dot '+statusDot(t.status)+'"></span>'+statusLabel(t.status)+'<span class="days-badge '+dl.cls+'" style="margin-left:6px">'+dl.txt+'</span></div></div>'+
-    (mtg?'<div class="info-card" style="cursor:pointer" onclick="closeModal();openMinutesDetail(\''+mtg.id+'\')"><div class="info-label">出典議事録</div><div class="info-val" style="color:var(--main-dark);margin-top:4px"><i class="ti ti-notebook"></i> '+mtg.title+'（'+fmtDate(mtg.date)+'）</div></div>':'')+
+    (mtg?'<div class="info-card" style="cursor:pointer" onclick="closeModal();openMinutesDetail(\''+mtg.id+'\')"><div class="info-label">出典議事録</div><div class="info-val" style="color:var(--main-dark);margin-top:4px"><i class="ti ti-notebook"></i> '+escHtml(mtg.title)+'（'+fmtDate(mtg.date)+'）</div></div>':'')+
     '</div>'+
     '<button class="big-btn btn-sky" onclick="saveTaskEdit('+id+')"><i class="ti ti-device-floppy"></i>内容・担当者・期限を保存</button>'+
-    '<button class="big-btn btn-primary" onclick="changeStatus('+id+',\''+ns+'\')"><i class="ti '+ni+'"></i>'+nl+'</button>'+
+    '<button class="big-btn btn-primary" onclick="updateStatus('+id+',\''+ns+'\')"><i class="ti '+ni+'"></i>'+nl+'</button>'+
     '<button class="big-btn btn-danger" onclick="deleteTask('+id+')"><i class="ti ti-trash"></i>このタスクを削除</button>'+
     '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i>閉じる</button>'+
     '</div></div>';
 }
 
-function saveTaskEdit(id){
+async function saveTaskEdit(id){
   const title=document.getElementById('task-edit-title').value.trim();
   const person=document.getElementById('task-edit-person').value;
   const due=document.getElementById('task-edit-due').value;
-  if(!title){alert('タスク内容を入力してください');return}
-  if(!due){alert('期限を入力してください');return}
-  tasks=tasks.map(t=>t.id===id?Object.assign({},t,{title,person,due}):t);
-  closeModal();renderAll();
+  if(!title || !due){alert('内容と期限を入力してください');return}
+  
+  await supabase.from('task_list').update({ title, person, due }).eq('id', id);
+  closeModal();
+  loadDataFromDatabase();
 }
 
-function closeModal(e){if(!e||e.target.classList.contains('modal-bg')){document.getElementById('modal-area').innerHTML=''}}
-function changeStatus(id,s){tasks=tasks.map(t=>t.id===id?Object.assign({},t,{status:s}):t);closeModal();renderAll()}
-function deleteTask(id){if(confirm('削除しますか？')){tasks=tasks.filter(t=>t.id!==id);closeModal();renderAll()}}
+async function updateStatus(id, newStatus){
+  await supabase.from('task_list').update({ status: newStatus }).eq('id', id);
+  closeModal();
+  loadDataFromDatabase();
+}
+
+async function deleteTask(id){
+  if(!confirm('削除しますか？'))return;
+  await supabase.from('task_list').delete().eq('id', id);
+  closeModal();
+  loadDataFromDatabase();
+}
 
 function switchTab(tab){
   ['tasks','ai','minutes','members','add'].forEach(t=>{const el=document.getElementById('tab-'+t);if(el)el.style.display=t===tab?'block':'none'});
@@ -622,43 +643,52 @@ function switchTab(tab){
   if(tab==='ai')updatePromptText();
 }
 
-function addManualTask(){
+async function addManualTask(){
   const title=document.getElementById('f-title').value.trim();
   const person=document.getElementById('f-person').value;
   const due=document.getElementById('f-due').value;
   const status=document.getElementById('f-status').value;
   if(!title||!due){alert('タスク内容と期限を入力してください');return}
-  tasks.push({id:nextId++,title,person,due,status,fromMeeting:false,minutesId:null});
+  
+  await supabase.from('task_list').insert([{ title, person, due, status }]);
   document.getElementById('f-title').value='';
-  switchTab('tasks');renderAll();
+  switchTab('tasks');
+  loadDataFromDatabase();
 }
 
 function getFormValues(){
   return{title:document.getElementById('meeting-title').value.trim(),date:document.getElementById('meeting-date').value,members:document.getElementById('meeting-members').value.trim(),body:document.getElementById('minutes-input').value.trim()};
 }
 
-function saveMinutesOnly(){
+async function saveMinutesOnly(){
   const{title,date,members:mem,body}=getFormValues();
   if(!title||!body){alert('タイトルとメモ本文を入力してください');return}
-  const mid='m'+nextMinutesId++;
-  minutesList.push({id:mid,title,date:date||today(),members:mem,body,taskIds:[],savedAt:new Date().toISOString()});
-  clearAIForm();alert('議事録を保存しました');switchTab('minutes');renderAll();
+  const mid='m'+Date.now();
+  
+  await supabase.from('minutes_list').insert([{ id:mid, title, date:date||today(), members:mem, body, task_ids:[], saved_at:new Date().toISOString() }]);
+  clearAIForm();
+  alert('議事録を保存しました');
+  switchTab('minutes');
+  loadDataFromDatabase();
 }
 
-function analyzeMinutes(){
+async function analyzeMinutes(){
   const{title,date,members:mem,body}=getFormValues();
-  if(!title){alert('会議タイトルを入力してください');return}
-  if(!body){alert('メモ・議事録本文を入力してください');return}
+  if(!title || !body){alert('タイトルと本文を入力してください');return}
   const res=document.getElementById('ai-result-area');
   res.innerHTML='<div style="text-align:center;padding:24px;color:#aaa"><span class="spinner"></span><br><br>議事録テキストからタスクを分析・抽出中...</div>';
-  const mid='m'+nextMinutesId++;
+  
+  const mid='m'+Date.now();
   pendingMinutesId=mid;
-  minutesList.push({id:mid,title,date:date||today(),members:mem,body,taskIds:[],savedAt:new Date().toISOString()});
+  
+  // 先に議事録を保存
+  await supabase.from('minutes_list').insert([{ id:mid, title, date:date||today(), members:mem, body, task_ids:[], saved_at:new Date().toISOString() }]);
+  
   setTimeout(()=>{
     const extracted=extractTasksFromText(body);
     pendingTasks=extracted;
     showExtractedTasks(extracted,mid);
-    renderAll();
+    loadDataFromDatabase();
   },400);
 }
 
@@ -703,7 +733,7 @@ function showExtractedTasks(extracted,mid){
   const res=document.getElementById('ai-result-area');
   if(!extracted.length){
     res.innerHTML='<div class="step-box"><h4><i class="ti ti-info-circle"></i> タスクが自動検出されませんでした</h4>'+
-      '<p style="font-size:13px;color:#555;margin-bottom:12px">登録されている担当者名とアクション（作成・提出・確認など）を含む文を議事録に書くと自動抽出できます。</p>'+
+      '<p style="font-size:13px;color:#555;margin-bottom:12px">登録されている担当者名とアクションを含む文を議事録に書くと自動抽出できます。</p>'+
       '<button class="big-btn btn-primary" onclick="switchTab(\'add\')"><i class="ti ti-plus"></i> 手動でタスクを追加</button></div>';
     return;
   }
@@ -712,7 +742,7 @@ function showExtractedTasks(extracted,mid){
     const personOpts=members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('')
       +'<option value="その他"'+(t.person==='その他'?' selected':'')+'>その他</option>';
     html+='<div class="extracted-task-row">'+
-      '<div class="task-text">'+t.title+'</div>'+
+      '<div class="task-text">'+escHtml(t.title)+'</div>'+
       '<select id="ep-'+i+'" style="min-width:80px">'+personOpts+'</select>'+
       '<input type="date" id="ed-'+i+'" value="'+t.due+'" style="min-width:130px">'+
       '</div>';
@@ -722,19 +752,27 @@ function showExtractedTasks(extracted,mid){
   res.innerHTML=html;
 }
 
-function confirmAndRegister(mid){
-  const newIds=[];
+async function confirmAndRegister(mid){
+  const insertRows = [];
   pendingTasks.forEach((t,i)=>{
     const person=document.getElementById('ep-'+i)?.value||t.person;
     const due=document.getElementById('ed-'+i)?.value||t.due;
-    const nid=nextId++;
-    tasks.push({id:nid,title:t.title,person,due,status:'todo',fromMeeting:true,minutesId:mid});
-    newIds.push(nid);
+    insertRows.push({ title: t.title, person, due, status: 'todo', from_meeting: true, minutes_id: mid });
   });
-  minutesList=minutesList.map(m=>m.id===mid?Object.assign({},m,{taskIds:newIds}):m);
-  clearAIForm();document.getElementById('ai-result-area').innerHTML='';
-  pendingTasks=[];pendingMinutesId=null;
-  switchTab('tasks');renderAll();
+
+  // 1. データベースにタスクを一括登録
+  const { data: newTasks, error } = await supabase.from('task_list').insert(insertRows).select();
+  if(error) { console.error(error); return; }
+
+  // 2. 議事録側に、紐付いたタスクIDの一覧を記録
+  const newIds = (newTasks || []).map(t => t.id);
+  await supabase.from('minutes_list').update({ task_ids: newIds }).eq('id', mid);
+
+  clearAIForm();
+  document.getElementById('ai-result-area').innerHTML='';
+  pendingTasks=[]; pendingMinutesId=null;
+  switchTab('tasks');
+  loadDataFromDatabase();
 }
 
 function clearAIForm(){
@@ -745,11 +783,12 @@ function clearAIForm(){
 }
 
 document.getElementById('meeting-title').addEventListener('input', updatePromptText);
-
 window.addEventListener('resize',()=>{renderTasks();renderMinutes()});
 document.getElementById('f-due').value=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
 document.getElementById('meeting-date').value=today();
-renderAll();
+
+// アプリ起動時にデータベースからデータを取得
+loadDataFromDatabase();
 </script>
 </body>
 </html>
