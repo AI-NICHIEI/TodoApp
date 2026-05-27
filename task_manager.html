@@ -344,7 +344,7 @@ function updatePromptText(){
 【ルール】
 1. 「箇条書きで、要点を絞って簡潔に」まとめてください。長い会議でも重要な内容が1分で把握できるように整理すること。
 2. 決定事項には、必ず「誰が（担当者）」「何を（タスク）」「いつまでに（期限）」やるかを明確に紐付けて記載してください。
-3. 今月の目標（例:目標50%未達など）に対して遅れている事実や、会話内で出た「未達の具体的な原因」「今後の改善策・次の打ち手」は必ず漏らさず箇条書きで抽出してください。
+3. 今月の目標（例:目標50%未達など）に対して遅れている事実や、会話内で出た「未達の具体的な原因」「今後の改善策・次の打ち手」は必ず漏らさず箇ポ書きで抽出してください。
 4. 「〜を強化する」「頑張る」といった抽象的な精神論の発言はビジネス事実に変換し、「何を何件やるか」など可能な限り具体的なアクションとして記録してください。`;
 
   const detailText = `あなたは会議議事録の作成を支援する優秀なアシスタントです。
@@ -581,9 +581,11 @@ function openTask(id){
   document.getElementById('modal-area').innerHTML=
     '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:8px">'+
-    '<h3 style="margin-bottom:0;color:#333;font-size:15px;line-height:1.4">'+t.title+'</h3>'+
+    '<h3 style="margin-bottom:0;color:var(--main-dark);font-size:16px;"><i class="ti ti-pencil"></i> タスクを編集</h3>'+
     '<button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1;flex-shrink:0">&times;</button></div>'+
     '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">'+
+    '<div class="info-card"><div class="info-label">タスク内容</div>'+
+    '<input type="text" id="task-edit-title" value="'+escHtml(t.title)+'" style="width:100%;padding:9px 12px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;color:#333;font-family:inherit;margin-top:4px"></div>'+
     '<div class="info-card"><div class="info-label">担当者</div>'+
     '<select id="task-edit-person" style="width:100%;padding:9px 12px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;color:#333;font-family:inherit;margin-top:4px">'+personOpts+'</select></div>'+
     '<div class="info-card"><div class="info-label">期限</div>'+
@@ -591,7 +593,7 @@ function openTask(id){
     '<div class="info-card"><div class="info-label">ステータス</div><div class="info-val" style="display:flex;align-items:center;gap:5px;margin-top:4px"><span class="status-dot '+statusDot(t.status)+'"></span>'+statusLabel(t.status)+'<span class="days-badge '+dl.cls+'" style="margin-left:6px">'+dl.txt+'</span></div></div>'+
     (mtg?'<div class="info-card" style="cursor:pointer" onclick="closeModal();openMinutesDetail(\''+mtg.id+'\')"><div class="info-label">出典議事録</div><div class="info-val" style="color:var(--main-dark);margin-top:4px"><i class="ti ti-notebook"></i> '+mtg.title+'（'+fmtDate(mtg.date)+'）</div></div>':'')+
     '</div>'+
-    '<button class="big-btn btn-sky" onclick="saveTaskEdit('+id+')"><i class="ti ti-device-floppy"></i>担当者・期限を保存</button>'+
+    '<button class="big-btn btn-sky" onclick="saveTaskEdit('+id+')"><i class="ti ti-device-floppy"></i>内容・担当者・期限を保存</button>'+
     '<button class="big-btn btn-primary" onclick="changeStatus('+id+',\''+ns+'\')"><i class="ti '+ni+'"></i>'+nl+'</button>'+
     '<button class="big-btn btn-danger" onclick="deleteTask('+id+')"><i class="ti ti-trash"></i>このタスクを削除</button>'+
     '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i>閉じる</button>'+
@@ -599,10 +601,12 @@ function openTask(id){
 }
 
 function saveTaskEdit(id){
+  const title=document.getElementById('task-edit-title').value.trim();
   const person=document.getElementById('task-edit-person').value;
   const due=document.getElementById('task-edit-due').value;
+  if(!title){alert('タスク内容を入力してください');return}
   if(!due){alert('期限を入力してください');return}
-  tasks=tasks.map(t=>t.id===id?Object.assign({},t,{person,due}):t);
+  tasks=tasks.map(t=>t.id===id?Object.assign({},t,{title,person,due}):t);
   closeModal();renderAll();
 }
 
