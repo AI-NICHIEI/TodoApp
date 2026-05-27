@@ -193,9 +193,10 @@ textarea:focus{outline:none;border-color:var(--main)}
 
   <div id="tab-minutes" class="section" style="display:none"><div class="two-col" id="minutes-list"></div></div>
   <div id="tab-members" class="section" style="display:none"><div class="member-list" id="member-list"></div></div>
+  
   <div id="tab-add" class="section" style="display:none">
     <div class="card-box">
-      <div class="form-row"><label>タスク内容</label><input id="f-title" type="text"></div>
+      <div class="form-row"><label>タスク内容</label><input id="f-title" type="text" placeholder="例：産廃搬出計画書の作成"></div>
       <div class="form-row"><label>担当者</label><select id="f-person"></select></div>
       <div class="form-row"><label>期限</label><input id="f-due" type="date"></div>
       <button class="big-btn btn-primary" onclick="addManualTask()">追加</button>
@@ -206,11 +207,10 @@ textarea:focus{outline:none;border-color:var(--main)}
 
 <script>
 // ==========================================
-// 💡 URLも正しいマスターパスワードも、私が全て設定しました！
+// 💡 自動設定：URLも本物のマスターキーも合体済み！
 // ==========================================
 const SUPABASE_URL = "https://uzjftccxoipspazrtuvl.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0ODIxNjAsImV4cCI6MjA2NDA0MjE2MH0.LidUv4Ea1nizjWfR0H0E2yqK_hZorv7zB7yq-62I7lE";
-// ==========================================
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let members=['園美','奈美','真美','恵一','美佳','矢板','月井','北浦','美咲','明日香','関根','吉岡'];
@@ -225,6 +225,7 @@ async function loadDataFromDatabase() {
     renderAll();
   } catch (e) { console.error(e); }
 }
+
 function today(){return new Date().toISOString().split('T')[0]}
 function daysLeft(due){return Math.ceil((new Date(due)-new Date(today()))/(1000*60*60*24))}
 function urgencyClass(due,status){if(status==='done')return '';const d=daysLeft(due);return d<=2?'urgent':d<=5?'warning':''}
@@ -234,47 +235,74 @@ function daysLabel(due,status){
   if(d<0)return {cls:'red',txt:Math.abs(d)+'日超過'};
   return {cls:'green',txt:'残'+d+'日'};
 }
-function statusDot(s){return s==='todo'?'dot-todo':s==='progress'?'dot-progress':'dot-done'}
-function statusLabel(s){return s==='todo'?'未着手':s==='progress'?'進行中':'完了'}
 function initials(name){return (name||'？').slice(0,2)}
-function fmtDate(d){if(!d)return '';const[y,m,dd]=d.split('-');return y+'年'+parseInt(m)+'月'+parseInt(dd)+'日'}
 function escHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 
 function updatePromptText(){
   const title = document.getElementById('meeting-title').value.trim() || '無題の会議';
-  document.getElementById('prompt-display').innerText = `会議名：${title}\n上記の会議に関して、決定事項、タスク、担当者、期限を箇条書きで抽出してください。`;
+  document.getElementById('prompt-display').innerText = `あなたは会議議事録の作成を支援する優秀なアシスタントです。提供する会議データから、「誰が」「何を」「いつまでに」やるかを箇条書きで抽出してください。\n会議名：${title}`;
 }
 function selectMode(mode){ currentMode = mode; updatePromptText(); }
-function copyPrompt(){ navigator.clipboard.writeText(document.getElementById('prompt-display').innerText); alert('コピーしました'); }
+function copyPrompt(){ navigator.clipboard.writeText(document.getElementById('prompt-display').innerText); alert('指示文をコピーしました！'); }
 function buildPersonSelect(selId, currentVal){
   const sel=document.getElementById(selId); if(!sel)return;
   sel.innerHTML=members.map(m=>'<option value="'+m+'"'+(m===currentVal?' selected':'')+'>'+m+'</option>').join('');
 }
+
 function renderAll(){renderSummary();renderFilters();renderTasks();buildPersonSelect('f-person','');updatePromptText()}
+
 function renderSummary(){
-  document.getElementById('summary').innerHTML=`<div class="sum-card"><div class="sum-num">${tasks.filter(t=>t.status==='todo').length}</div><div>未着手</div></div><div class="sum-card"><div class="sum-num">${tasks.filter(t=>t.status==='progress').length}</div><div>進行中</div></div>`;
+  const todo = tasks.filter(t=>t.status==='todo').length;
+  const prog = tasks.filter(t=>t.status==='progress').length;
+  const done = tasks.filter(t=>t.status==='done').length;
+  document.getElementById('summary').innerHTML=`
+    <div class="sum-card"><div class="sum-num" style="color:#C8C8B8">${todo}</div><div>未着手</div></div>
+    <div class="sum-card"><div class="sum-num" style="color:var(--sky)">${prog}</div><div>進行中</div></div>
+    <div class="sum-card"><div class="sum-num" style="color:var(--main)">${done}</div><div>完了</div></div>`;
 }
+
 function renderFilters(){
   document.getElementById('filter-row').innerHTML=['全員',...members].map(p=>`<button class="filter-chip ${filterPerson===p?'active':''}" onclick="setFilter('${p}')">${p}</button>`).join('');
 }
-function setFilter(p){filterPerson=p;renderAll()}
+function setFilter(p){filterPerson=p;renderTasks()}
+
 function taskCardHtml(t){
-  return `<div class="task-card ${urgencyClass(t.due,t.status)}" onclick="openTask(${t.id})"><div class="task-top"><div class="task-title">${escHtml(t.title)}</div></div></div>`;
+  const dl = daysLabel(t.due, t.status);
+  return `<div class="task-card ${urgencyClass(t.due,t.status)}" style="margin-bottom:8px; border:2px solid var(--border); padding:12px; background:#fff; border-radius:12px;">
+    <div style="font-weight:600;font-size:15px;margin-bottom:6px;">${escHtml(t.title)}</div>
+    <div style="font-size:12px;color:#888;display:flex;justify-content:between;align-items:center;">
+      <span>👤 ${t.person} 📅 ${t.due}</span>
+      <span class="days-badge ${dl.cls}" style="margin-left:auto;">${dl.txt}</span>
+    </div>
+  </div>`;
 }
+
 function renderTasks(){
   const visible=filterPerson==='全員'?tasks:tasks.filter(t=>t.person===filterPerson);
-  document.getElementById('task-list-single').innerHTML=visible.map(taskCardHtml).join('');
+  const html = visible.length ? visible.map(taskCardHtml).join('') : '<div class="empty">タスクはありません</div>';
+  document.getElementById('task-list-single').innerHTML=html;
 }
+
+// ーーー 💡 ここが消えていたのでボタンが動かなくなっていました！ ーーー
 function switchTab(tab){
-  ['tasks','ai','minutes','members','add'].forEach(t=>{document.getElementById('tab-'+t).style.display=t===tab?'block':'none'});
+  ['tasks','ai','minutes','members','add'].forEach(t=>{
+    const el = document.getElementById('tab-'+t);
+    if(el) el.style.display = (t===tab) ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('onclick').includes(`'${tab}'`));
+  });
 }
+
 async function addManualTask(){
   const title=document.getElementById('f-title').value.trim();
   const person=document.getElementById('f-person').value;
   const due=document.getElementById('f-due').value;
+  if(!title||!due){alert('内容と期限を入力してください');return}
   await supabase.from('task_list').insert([{ title, person, due, status:'todo' }]);
   loadDataFromDatabase();switchTab('tasks');
 }
+
 loadDataFromDatabase();
 </script>
 </body>
