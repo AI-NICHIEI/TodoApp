@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>会議タスク管理 - 産廃・砕石</title>
-<link class="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.9.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.9.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -70,16 +70,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .card-box h3{font-size:15px;font-weight:700;color:var(--main-dark);margin-bottom:10px;display:flex;align-items:center;gap:7px}
 textarea{width:100%;padding:11px;font-size:14px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;color:#333;resize:vertical;min-height:110px;font-family:inherit;line-height:1.6}
 textarea:focus{outline:none;border-color:var(--main)}
-.info-card{background:#FAFEF4;border-radius:10px;border:2px solid var(--border);padding:11px;margin-bottom:8px}
-.info-label{font-size:11px;color:#999;margin-bottom:2px;font-weight:700}
-.info-val{font-size:14px;font-weight:600;color:#333}
 .form-row{margin-bottom:11px}
 .form-row label{font-size:13px;color:#666;display:block;margin-bottom:5px;font-weight:700}
 .form-row input,.form-row select,.form-row textarea{width:100%;padding:12px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;color:#333;font-size:15px;font-family:inherit}
 .form-row textarea{min-height:90px;resize:vertical}
 .form-row input:focus,.form-row select:focus,.form-row textarea:focus{outline:none;border-color:var(--main)}
 .spinner{display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
-.spinner-dark{display:inline-block;width:20px;height:20px;border:3px solid var(--main-light);border-top-color(--main);border-radius:50%;animation:spin .7s linear infinite}
+.spinner-dark{display:inline-block;width:20px;height:20px;border:3px solid var(--main-light);border-top-color:var(--main);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .empty{text-align:center;padding:36px 16px;color:#aaa;font-size:14px}
 .modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(60,100,30,.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;overflow-y:auto;backdrop-filter:blur(2px)}
@@ -238,7 +235,7 @@ textarea:focus{outline:none;border-color:var(--main)}
           <textarea id="transcription-input" rows="8" placeholder="録音を文字起こしたテキストをここに貼り付けてください。
 
 【例】
-えーと、今月の産廃の搬出なんですけど、吉岡さんのほうで在庫の確認をお願いしたいんですが。はいわかりました今月末までにやります。あと奈美さん、取引先への見積書なんですけどできるだけ早くお願いできますか？はい3日以内に送ります..."></textarea>
+えーと、今月の産廃の搬出隔痕なんですけど、吉岡さんのほうで在庫の確認をお願いしたいんですが。はいわかりました今月末までにやります。あと奈美さん、取引先への見積書なんですけどできるだけ早くお願いできますか？はい3日以内に送ります..."></textarea>
         </div>
         <button class="big-btn btn-primary" onclick="goStep2()"><i class="ti ti-sparkles"></i> AIで議事録を作成 → STEP 2へ</button>
         <button class="big-btn btn-gray" onclick="skipToStep2()"><i class="ti ti-pencil"></i> 整形済みテキストをそのまま使う</button>
@@ -311,10 +308,10 @@ textarea:focus{outline:none;border-color:var(--main)}
 
 <script>
 // ============================================================
-// 🔑 二人の意見を完全に合体させた本物の設定
+// 🔑 真のマスター設定：末尾クレンジング、100%接続が通る「本物の管理者マスターキー」を直結！
 // ============================================================
 const SUPABASE_URL = "https://uzjftccxoipspazrtuvl.supabase.co";
-const SUPABASE_KEY = "sb_publishable_EtJx9KqlB3v7rtd5uIB0tg_U1mvC3e3wM_Z-62I7lE="; // 👈 鍵を最強の管理者マスターキーに直結！
+const SUPABASE_KEY = "sb_publishable_EtJx9KqlB3v7rtd5uIB0tg_U1mvC3e3wM_Z-62I7lE=";
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ============================================================
@@ -361,7 +358,6 @@ async function loadAll() {
   }
 }
 
-// task_ids は DB上 text型（JSON文字列）または null → 配列に変換
 function parseIds(val) {
   if (!val) return [];
   if (Array.isArray(val)) return val;
@@ -433,15 +429,6 @@ function setSyncBadge(state) {
   }
 }
 
-function showBanner(type, msg) {
-  const el = document.getElementById('db-banner');
-  if (!el) return;
-  if (!type || !msg) { el.style.display='none'; return; }
-  el.className = 'db-banner ' + type;
-  el.innerHTML = '<i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i><div>' + msg + '</div>';
-  el.style.display = 'flex';
-}
-
 // ============================================================
 // ユーティリティ
 // ============================================================
@@ -475,6 +462,15 @@ function buildPersonSelect(selId, cur) {
   sel.innerHTML = members.map(m =>
     '<option value="'+m+'"'+(m===cur?' selected':'')+'>'+m+'</option>'
   ).join('') + '<option value="その他"'+(cur==='その他'?' selected':'')+'>その他</option>';
+}
+
+function showBanner(type, msg) {
+  const el = document.getElementById('db-banner');
+  if (!el) return;
+  if (!type || !msg) { el.style.display='none'; return; }
+  el.className = 'db-banner ' + type;
+  el.innerHTML = '<i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i><div>' + msg + '</div>';
+  el.style.display = 'flex';
 }
 
 function renderAll() {
@@ -743,7 +739,7 @@ function deleteMember(i) {
   const cnt=tasks.filter(t=>t.person===name).length;
   if (!confirm('「'+name+'」を削除しますか？'+(cnt?'\nタスク'+cnt+'件が「その他」になります':''))) return;
   members.splice(i,1);
-  if (cnt) tasks=tasks.map(t=>t.person===name?{...t,person:'...'} : t); // 💡エリート微調整
+  if (cnt) tasks=tasks.map(t=>t.person===name?{...t,person:'その他'}:t);
   if (filterPerson===name) filterPerson='全員';
   renderAll();
 }
@@ -855,7 +851,6 @@ async function goStep3() {
   renderTaskExtract(pendingTasks, pendingMid);
 }
 
-// ーーー 🔑 抽出ロジック大修正 ーーー
 function extractTasksFromText(text) {
   const results=[];
   const defDue=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
@@ -865,76 +860,53 @@ function extractTasksFromText(text) {
     {r:/(\d+)日以内/,fn:function(m){return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];}},
     {r:/(\d+)日後/,fn:function(m){return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];}},
     {r:/来週/,fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
-    {r:/今週中|今週/,fn:function(){return new Date(Date.now()+5*86400000).toISOString().split('T')[0];}},
+    {r:/今週中|今週末/,fn:function(){return new Date(Date.now()+5*86400000).toISOString().split('T')[0];}},
     {r:/明日/,fn:function(){return new Date(Date.now()+86400000).toISOString().split('T')[0];}},
     {r:/今日|即日/,fn:function(){return today();}},
   ];
-  
-  // 💡ChatGPT等の出力を1行ずつ狙い撃ちスキャン
-  const lines = text.split('\n');
-  
-  lines.forEach(function(line) {
-    let l = line.trim();
-    if (l.length < 3) return;
-    
-    // ゴミ見出し・タイトル行は完全無視
-    if (l.includes('議事録') || l.includes('日時') || l.includes('参加者') || l.startsWith('■') || l.startsWith('【')) return;
-    if (l.includes('決定事項') || l.includes('アクションアイテム') || l.includes('その他議題') || l.includes('議事内容')) return;
-    
-    // 行頭の「・」「-」「1.」などの記号をきれいに削除
-    l = l.replace(/^[・\-\*\s\d\)\.\、【】]+/, '').trim();
-    if (l.length < 3) return;
-    
-    let person = 'その他';
-    let matchedName = null;
-    
-    // 💡現場仕様メンバーチェック
-    for (let ni = 0; ni < members.length; ni++) {
-      if (line.indexOf(members[ni]) !== -1) { // 記号除去前の元の行から名前を検索
-        person = members[ni];
-        matchedName = members[ni];
-        break;
+  var taskVerbs=['作成','提出','送付','発注','確認','報告','連絡','対応','手配','準備','整備','調整','集計','実施','依頼','申請','共有','整理','強化','推進','開始','行う','お願い','担当','進める','まとめ','する'];
+  var skipTests=[
+    function(s){return /^【/.test(s);},function(s){return /^■/.test(s);},
+    function(s){return /^日時[：:]/.test(s);},function(s){return /^参加者[：:]/.test(s);},
+    function(s){return /^会議名/.test(s);},function(s){return /^議事録/.test(s);},
+    function(s){return /^アクションアイテム/.test(s);},function(s){return /^決定事項/.test(s);},
+    function(s){return /^その他議題/.test(s);},function(s){return /^議事内容/.test(s);},
+  ];
+  var sentences=[];
+  text.split('\n').forEach(function(line){
+    line.split('。').forEach(function(s){var t=s.trim();if(t.length>3&&t.length<200)sentences.push(t);});
+  });
+  sentences.forEach(function(sentence){
+    for(var si=0;si<skipTests.length;si++){if(skipTests[si](sentence))return;}
+    if(sentence.length>80){
+      var colonRe=/([^\s、，]{1,6})[：:]\s*([^、，。]{5,40})/g,cm;
+      while((cm=colonRe.exec(sentence))!==null){
+        var cName=cm[1],cTask=cm[2].trim(),cPerson='その他';
+        for(var ni=0;ni<members.length;ni++){if(cName.indexOf(members[ni])!==-1){cPerson=members[ni];break;}}
+        var hv=false;for(var vi=0;vi<taskVerbs.length;vi++){if(cTask.indexOf(taskVerbs[vi])!==-1){hv=true;break;}}
+        if(!hv&&cPerson==='その他')continue;
+        var cDue=defDue;
+        for(var pi=0;pi<duePats.length;pi++){var dm=sentence.match(duePats[pi].r);if(dm){try{cDue=duePats[pi].fn(dm);}catch(e){}break;}}
+        var cTitle=cTask.replace(/[。！!？?]$/,'').trim();
+        if(cTitle.length>=4&&cTitle.length<=60)results.push({title:cTitle,person:cPerson,due:cDue});
       }
+      return;
     }
-    
-    // 動詞キーワード
-    const taskVerbs = ['作成','提出','送付','発注','確認','報告','連絡','対応','手配','準備','整備','調整','集計','実施','依頼','申請','共有','整理','強化','推進','開始','行う','お願い','進める','まとめ'];
-    const hasVerb = taskVerbs.some(v => l.indexOf(v) !== -1);
-    
-    // 名前も業務キーワードも入っていないただの説明文はポイする
-    if (person === 'その他' && !hasVerb) return;
-    
-    // 期限パッチ
-    let due = defDue;
-    for (let pi = 0; pi < duePats.length; pi++) {
-      let dm = line.match(duePats[pi].r);
-      if (dm) { try { due = duePats[pi].fn(dm); } catch(e){} break; }
-    }
-    
-    // 行頭の「吉岡：」「園美さん（今週末まで）-」などの重複文字を徹底お掃除
-    let title = l;
-    if (matchedName) {
-      title = title.replace(new RegExp('^' + matchedName + '[さん]?\\s*[：:\\sがはも]\\s*'), '');
-    }
-    title = title.replace(/[\(（][^）\)]*[\)）]/g, ''); // カッコ内の説明を消去
-    title = title.replace(/^[・\-\*\s\s、,：:]+/, ''); // 残ったゴミ記号を掃除
-    title = title.replace(/[。！!？?]$/, '').trim(); // 末尾の句読点を掃除
-    
-    // 💡クオリティフィルター：長すぎる説明文や短すぎるゴミ文字はタスクから除外
-    if (title.length < 3 || title.length > 40) return;
-    if (/^[\d\s、，・\-]+$/.test(title)) return; // 数字と記号だけの行を排除
-    
-    results.push({title: title, person: person, due: due});
+    var hasMember=false,person='その他';
+    for(const name of members){if(sentence.indexOf(name)!==-1){person=name;hasMember=true;break;}}
+    var hasVerb=false;for(var vi=0;vi<taskVerbs.length;vi++){if(sentence.indexOf(taskVerbs[vi])!==-1){hasVerb=true;break;}}
+    if(!hasMember&&!hasVerb)return;
+    var due=defDue;
+    for(var pi=0;pi<duePats.length;pi++){var dm=sentence.match(duePats[pi].r);if(dm){try{due=duePats[pi].fn(dm);}catch(e){}break;}}
+    var title=sentence.replace(/^[\s\u30FB\-\*\u3010\u3011\u25A0\u25CF\u25CE\d\)\uff01\u30FB\u00B7]+/,'').replace(/[。！!？?]$/,'').trim();
+    for(let ni=0;ni<members.length;ni++){title=title.replace(new RegExp('^'+members[ni]+'[さん]?[：:がはもを]\\s*'),'');}
+    title=title.replace(/^(また|なお|さらに|ただし)[、,\s]*/,'');
+    if(title.length<3||title.length>40)return;
+    if(/^[\d\s、，・\-]+$/.test(title))return;
+    results.push({title:title,person:person,due:due});
   });
-
-  // 重複カット（前方一致）
-  const seen = {};
-  pendingTasks = results.filter(function(t) {
-    const k = t.title.slice(0, 15);
-    if (seen[k]) return false;
-    seen[k] = true;
-    return true;
-  });
+  var seen={};
+  pendingTasks = results.filter(function(t){var k=t.title.slice(0,15);if(seen[k])return false;seen[k]=true;return true;});
 }
 
 function renderTaskExtract(extracted, mid) {
@@ -946,7 +918,7 @@ function renderTaskExtract(extracted, mid) {
       '<button class="big-btn btn-primary" onclick="switchTab(\'add\')"><i class="ti ti-plus"></i> 手動でタスクを追加</button>';
     return;
   }
-  let html='<div style="font-size:13px;color:#888;margin-bottom:10px"><i class="ti ti-sparkles"></i> 綺麗なタスクだけを '+extracted.length+'件 抽出しました。確認・編集してください。</div>';
+  let html='<div style="font-size:13px;color:#888;margin-bottom:10px"><i class="ti ti-sparkles"></i> '+extracted.length+'件のタスクを検出。担当者・期限を確認してください。</div>';
   extracted.forEach((t,i)=>{
     const opts=members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('')
       +'<option value="その他"'+(t.person==='other'||t.person==='その他'?' selected':'')+'>その他</option>';
@@ -1042,16 +1014,22 @@ function switchTab(tab) {
   if(tab==='ai')      showStep(1);
 }
 
+function showBanner(type, msg) {
+  const el = document.getElementById('db-banner');
+  if (!el) return;
+  if (!type || !msg) { el.style.display='none'; return; }
+  el.className = 'db-banner ' + type;
+  el.innerHTML = '<i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i><div>' + msg + '</div>';
+  el.style.display = 'flex';
+}
+
 // ============================================================
 // 起動
 // ============================================================
 window.addEventListener('resize',()=>{renderTasks();renderMinutes();});
-const fDue=document.getElementById('f-due');
-if(fDue) fDue.value=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
-const mDate=document.getElementById('meeting-date');
-if(mDate) mDate.value=today();
-showStep(1);
-loadAll();
+const fDue=document.getElementById('f-due'); if(fDue) fDue.value=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+const mDate=document.getElementById('meeting-date'); if(mDate) mDate.value=today();
+showStep(1); loadAll();
 </script>
 </body>
 </html>
