@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>会議タスク管理 - 産廃・砕石</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.9.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --main:#7DBF3A;--main-dark:#5A9A1F;--main-light:#E8F7D0;--main-mid:#A8D96A;
+  --sky:#5BB8E8;--sky-light:#D6F0FF;--sky-mid:#89CFEE;
+  --red:#E05B5B;--red-light:#FFE8E8;
+  --amber:#D4830A;--amber-light:#FFF2D6;
+  --gray:#7A7A6E;--gray-light:#F0EFE6;
+  --border:#D8EDB8;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(135deg,#E8F7D0,#F2FAE6,#EEFADB);min-height:100vh}
+#app{max-width:100%;background:rgba(242,250,230,0.92);min-height:100vh;position:relative}
+.header{background:linear-gradient(120deg,var(--main) 0%,#9DD44A 100%);padding:16px 20px 14px;box-shadow:0 2px 12px rgba(125,191,58,.25)}
+.header h1{font-size:18px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;text-shadow:0 1px 3px rgba(0,0,0,.15)}
+.header p{font-size:12px;color:rgba(255,255,255,.85);margin-top:3px}
+.sync-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:none;margin-left:auto;display:flex;align-items:center;gap:4px}
+.sync-badge.ok{background:rgba(255,255,255,.25);color:#fff}
+.sync-badge.err{background:#FFCECE;color:#C02020}
+.sync-badge.loading{background:rgba(255,255,255,.15);color:#E8F7D0}
+.tab-bar{display:flex;background:#fff;border-bottom:2px solid var(--border);overflow-x:auto}
+.tab{flex:1;min-width:54px;padding:9px 3px;font-size:10px;font-weight:700;text-align:center;cursor:pointer;color:#aaa;border:none;background:transparent;border-bottom:3px solid transparent;margin-bottom:-2px;display:flex;flex-direction:column;align-items:center;gap:1px;white-space:nowrap}
+.tab i{font-size:16px}
+.tab.active{color:var(--main-dark);border-bottom-color:var(--main)}
+.section{padding:14px}
+.filter-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.filter-chip{padding:6px 12px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid var(--border);background:#fff;color:#666;transition:all .15s}
+.filter-chip.active{background:var(--main);color:#fff;border-color:var(--main)}
+.summary-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.sum-card{background:#fff;border-radius:14px;border:2px solid var(--border);padding:12px;text-align:center;box-shadow:0 2px 8px rgba(125,191,58,.1)}
+.sum-num{font-size:28px;font-weight:700}
+.sum-lbl{font-size:11px;color:#888;margin-top:2px;font-weight:600}
+.status-group{margin-bottom:16px}
+.status-label{font-size:12px;font-weight:700;color:#888;margin-bottom:7px;padding-left:2px;display:flex;align-items:center;gap:5px}
+.status-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot-todo{background:#C8C8B8}.dot-progress{background:var(--sky)}.dot-done{background:var(--main-mid)}
+.task-card{background:#fff;border-radius:14px;border:2px solid var(--border);padding:13px 14px;margin-bottom:9px;cursor:pointer;transition:transform .1s;box-shadow:0 2px 8px rgba(125,191,58,.07)}
+.task-card:active{transform:scale(.98)}
+.task-card.urgent{border-left:5px solid #E05B5B;background:var(--red-light);border-color:#FFBBBB}
+.task-card.warning{border-left:5px solid #F0B030;background:var(--amber-light);border-color:#FFD98A}
+.task-card.in-progress-card{background:var(--sky-light);border-color:var(--sky-mid)}
+.task-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.task-title{font-size:15px;font-weight:600;color:#333;line-height:1.45;flex:1}
+.task-card.urgent .task-title{color:#C02020}
+.days-badge{font-size:12px;font-weight:700;border-radius:20px;padding:4px 10px;white-space:nowrap;flex-shrink:0}
+.days-badge.red{background:#FFCECE;color:#C02020}
+.days-badge.amber{background:#FFE0A0;color:#8B5500}
+.days-badge.green{background:var(--main-light);color:var(--main-dark)}
+.days-badge.gray{background:#E8E8DC;color:#666}
+.task-meta{display:flex;gap:8px;margin-top:9px;align-items:center;flex-wrap:wrap}
+.meta-chip{font-size:12px;color:#888;display:flex;align-items:center;gap:4px}
+.meta-chip i{font-size:14px}
+.avatar{width:26px;height:26px;border-radius:50%;background:var(--main-light);color:var(--main-dark);font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;border:1.5px solid var(--main-mid)}
+.meeting-badge{font-size:11px;color:var(--main-dark);display:flex;align-items:center;gap:3px;font-weight:600;background:var(--main-light);border-radius:10px;padding:2px 7px;cursor:pointer}
+.big-btn{width:100%;padding:15px;border-radius:14px;font-size:15px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:10px;transition:opacity .15s,transform .1s;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.big-btn:active{opacity:.85;transform:scale(.98)}
+.btn-primary{background:linear-gradient(120deg,var(--main),#9DD44A);color:#fff}
+.btn-sky{background:var(--sky-light);color:#1A6E9A;border:2px solid var(--sky-mid)}
+.btn-danger{background:var(--red-light);color:#C02020;border:2px solid #FFBBBB}
+.btn-gray{background:var(--gray-light);color:#666;border:2px solid #DDD}
+.btn-yellow{background:#FAFAB0;color:#6B6B10;border:2px solid #E0E066}
+.card-box{background:#fff;border-radius:14px;border:2px solid var(--border);padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(125,191,58,.08)}
+.card-box h3{font-size:15px;font-weight:700;color:var(--main-dark);margin-bottom:10px;display:flex;align-items:center;gap:7px}
+textarea{width:100%;padding:11px;font-size:14px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;color:#333;resize:vertical;min-height:110px;font-family:inherit;line-height:1.6}
+textarea:focus{outline:none;border-color:var(--main)}
+.info-card{background:#FAFEF4;border-radius:10px;border:2px solid var(--border);padding:11px;margin-bottom:8px}
+.info-label{font-size:11px;color:#999;margin-bottom:2px;font-weight:700}
+.info-val{font-size:14px;font-weight:600;color:#333}
+.form-row{margin-bottom:11px}
+.form-row label{font-size:13px;color:#666;display:block;margin-bottom:5px;font-weight:700}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:12px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;color:#333;font-size:15px;font-family:inherit}
+.form-row textarea{min-height:90px;resize:vertical}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{outline:none;border-color:var(--main)}
+.spinner{display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+.spinner-green{border-color:var(--main-light);border-top-color:var(--main)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:36px 16px;color:#aaa;font-size:14px}
+.empty i{font-size:36px;display:block;margin-bottom:10px;color:#ccc}
+.modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(60,100,30,.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;overflow-y:auto;backdrop-filter:blur(2px)}
+.modal{background:#fff;border-radius:18px;padding:20px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;border:2px solid var(--border);box-shadow:0 8px 32px rgba(80,160,40,.15)}
+.minutes-card{background:#fff;border-radius:14px;border:2px solid var(--border);padding:14px;margin-bottom:10px;cursor:pointer;transition:transform .1s;box-shadow:0 2px 8px rgba(125,191,58,.07)}
+.minutes-card:active{transform:scale(.98)}
+.minutes-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.minutes-title{font-size:15px;font-weight:700;color:#333;flex:1;line-height:1.4}
+.minutes-meta{display:flex;gap:8px;margin-top:7px;flex-wrap:wrap;align-items:center}
+.minutes-preview{font-size:12px;color:#999;margin-top:7px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tag{font-size:11px;font-weight:700;border-radius:20px;padding:3px 9px}
+.tag-tasks{background:var(--main-light);color:var(--main-dark)}
+.tag-memo{background:var(--gray-light);color:#888}
+.minutes-body{font-size:14px;color:#444;line-height:1.85;white-space:pre-wrap;background:#FAFEF4;border-radius:10px;padding:14px;margin-bottom:12px;max-height:340px;overflow-y:auto;border:2px solid var(--border)}
+.task-chip{display:inline-flex;align-items:center;gap:5px;background:var(--main-light);color:var(--main-dark);font-size:12px;font-weight:600;border-radius:8px;padding:5px 9px;margin:3px 3px 3px 0;border:1px solid var(--main-mid)}
+.minutes-new-btn{background:linear-gradient(120deg,var(--main),#9DD44A);color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(125,191,58,.3)}
+
+/* ステップUI */
+.step-indicator{display:flex;align-items:center;margin-bottom:16px}
+.step-item{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;position:relative}
+.step-item:not(:last-child)::after{content:'';position:absolute;top:15px;left:62%;width:76%;height:2px;background:var(--border)}
+.step-circle{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid var(--border);background:#fff;color:#ccc;z-index:1;position:relative}
+.step-circle.active{background:var(--main);border-color:var(--main);color:#fff}
+.step-circle.done{background:var(--main-light);border-color:var(--main-mid);color:var(--main-dark)}
+.step-lbl{font-size:10px;font-weight:700;color:#ccc;text-align:center}
+.step-lbl.active{color:var(--main-dark)}
+.step-lbl.done{color:var(--main-mid)}
+
+/* まとめ方モード */
+.mode-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.mode-card{background:#fff;border:2px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;text-align:center;transition:all .15s}
+.mode-card.selected{border-color:var(--main);background:var(--main-light)}
+.mode-card .mode-title{font-size:13px;font-weight:700;color:#333;margin-bottom:4px}
+.mode-card .mode-desc{font-size:11px;color:#888;line-height:1.4}
+.mode-card.selected .mode-title{color:var(--main-dark)}
+
+/* プロンプト表示ボックス */
+.prompt-box{background:#FFF8E6;border:2px dashed #D4830A;border-radius:12px;padding:12px;margin-bottom:14px}
+.prompt-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.prompt-label{font-size:12px;font-weight:700;color:#D4830A}
+.copy-btn{background:#fff;border:1.5px solid #D4830A;color:#D4830A;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer}
+.prompt-text{font-size:12px;color:#555;white-space:pre-wrap;background:rgba(255,255,255,.7);padding:8px;border-radius:6px;line-height:1.5;max-height:120px;overflow-y:auto}
+
+/* 抽出タスク行 */
+.extracted-task-row{background:#fff;border-radius:10px;border:2px solid var(--sky-mid);padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.extracted-task-row .task-text{flex:1;min-width:120px;font-size:14px;font-weight:600;color:#333}
+.extracted-task-row select,.extracted-task-row input[type=date]{padding:6px 8px;border-radius:8px;border:1.5px solid var(--border);font-size:13px;background:#FAFEF4;color:#333;font-family:inherit}
+
+/* 担当者管理 */
+.member-list{display:flex;flex-direction:column;gap:8px}
+.member-row{background:#fff;border-radius:12px;border:2px solid var(--border);padding:12px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 6px rgba(125,191,58,.07)}
+.member-avatar-lg{width:40px;height:40px;border-radius:50%;background:var(--main-light);color:var(--main-dark);font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2px solid var(--main-mid)}
+.member-name{font-size:16px;font-weight:700;color:#333;flex:1}
+.member-task-count{font-size:12px;color:#888;background:var(--gray-light);border-radius:20px;padding:3px 10px;white-space:nowrap}
+.member-actions{display:flex;gap:6px}
+.icon-btn{width:36px;height:36px;border-radius:10px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;transition:opacity .15s}
+.icon-btn:active{opacity:.7}
+.icon-btn.edit{background:var(--sky-light);color:#1A6E9A}
+.icon-btn.del{background:var(--red-light);color:#C02020}
+.add-member-box{background:#fff;border-radius:14px;border:2px dashed var(--main-mid);padding:16px;margin-top:12px}
+.add-member-box h4{font-size:14px;font-weight:700;color:var(--main-dark);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.inline-input-row{display:flex;gap:8px;align-items:center}
+.inline-input-row input{flex:1;padding:11px 14px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;color:#333;font-size:15px;font-family:inherit}
+.inline-input-row input:focus{outline:none;border-color:var(--main)}
+.inline-input-row button{padding:11px 16px;border-radius:10px;border:none;background:linear-gradient(120deg,var(--main),#9DD44A);color:#fff;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
+
+.db-error-banner{background:#FFE8E8;border:2px solid #FFBBBB;border-radius:12px;padding:12px 16px;margin-bottom:12px;font-size:13px;color:#C02020;display:none;align-items:center;gap:8px}
+
+@media(min-width:768px){
+  #app{max-width:920px;margin:0 auto;box-shadow:0 0 50px rgba(125,191,58,.15)}
+  .header{padding:22px 32px 18px}
+  .header h1{font-size:22px}
+  .tab{font-size:12px;padding:12px 6px}
+  .tab i{font-size:19px}
+  .section{padding:20px 28px}
+  .filter-chip{font-size:14px;padding:9px 16px}
+  .task-card{padding:16px 18px}
+  .task-title{font-size:16px}
+  .days-badge{font-size:13px;padding:5px 12px}
+  .big-btn{font-size:16px;padding:17px}
+  .card-box{padding:20px}
+  .card-box h3{font-size:16px}
+  .form-row input,.form-row select,.form-row textarea{font-size:16px;padding:14px}
+  .sum-num{font-size:32px}
+  .sum-card{padding:14px}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+  .modal{max-width:540px}
+  .member-row{padding:14px 18px}
+}
+@media(min-width:1024px){
+  #app{max-width:1120px}
+  .header{padding:24px 48px 20px;display:flex;align-items:center}
+  .header-text{flex:1}
+  .header h1{font-size:24px}
+  .tab-bar{padding:0 16px}
+  .tab{flex:none;padding:14px 22px;font-size:13px}
+  .section{padding:24px 48px}
+  .two-col{gap:28px}
+  .filter-chip{font-size:15px;padding:10px 20px}
+  .task-title{font-size:17px}
+  .big-btn{font-size:17px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-text">
+      <h1><i class="ti ti-leaf"></i> 会議タスク管理
+        <span class="sync-badge loading" id="sync-badge"><span class="spinner" id="sync-spinner"></span> 接続中</span>
+      </h1>
+      <p>産業廃棄物処理・砕石販売 ｜ チーム共有モード</p>
+    </div>
+  </div>
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('tasks')"><i class="ti ti-list-check"></i>タスク</button>
+    <button class="tab" onclick="switchTab('ai')"><i class="ti ti-sparkles"></i>AI議事録</button>
+    <button class="tab" onclick="switchTab('minutes')"><i class="ti ti-notebook"></i>議事録</button>
+    <button class="tab" onclick="switchTab('members')"><i class="ti ti-users"></i>担当者</button>
+    <button class="tab" onclick="switchTab('add')"><i class="ti ti-plus"></i>追加</button>
+  </div>
+
+  <div id="tab-tasks" class="section">
+    <div class="db-error-banner" id="db-error-banner">
+      <i class="ti ti-wifi-off" style="font-size:20px"></i>
+      <div>データベースに接続できません。ページを再読み込みしてください。</div>
+    </div>
+    <div class="summary-row" id="summary"></div>
+    <div class="filter-row" id="filter-row"></div>
+    <div class="two-col">
+      <div id="task-list-left"></div>
+      <div id="task-list-right"></div>
+    </div>
+    <div id="task-list-single"></div>
+  </div>
+
+  <div id="tab-ai" class="section" style="display:none">
+    <div id="step-indicator" style="display:flex;align-items:center;margin-bottom:16px"></div>
+
+    <div id="step1">
+      <div class="card-box">
+        <h3><i class="ti ti-microphone"></i> STEP 1　録音・文字起こしデータを貼り付け</h3>
+        <p style="font-size:13px;color:#888;margin-bottom:14px;line-height:1.65">
+          録音を文字起こしたテキストをそのまま貼り付けてください。<br>
+          AIへの指示文をコピーして<b>ChatGPT・Claude等</b>に投げ、出力をSTEP2に貼り付けます。
+        </p>
+        <div class="form-row"><label>会議タイトル <span style="color:var(--red);font-size:11px">*必須</span></label><input id="meeting-title" type="text" placeholder="例：5月定例会議　産廃部門"></div>
+        <div class="form-row"><label>会議日</label><input id="meeting-date" type="date"></div>
+        <div class="form-row"><label>参加者（任意）</label><input id="meeting-members" type="text" placeholder="例：園美、吉岡、矢板"></div>
+
+        <div style="font-size:13px;font-weight:700;color:#555;margin-bottom:8px"><i class="ti ti-adjustments" style="color:var(--main-dark)"></i> 議事録のまとめ方を選んでください</div>
+        <div class="mode-cards">
+          <div class="mode-card selected" id="mode-brief" onclick="selectMode('brief')">
+            <div class="mode-title">📋 箇条書き・要点まとめ</div>
+            <div class="mode-desc">決定事項とタスクを簡潔に。長い会議でも素早く把握。</div>
+          </div>
+          <div class="mode-card" id="mode-detail" onclick="selectMode('detail')">
+            <div class="mode-title">📝 詳細・議論プロセス重視</div>
+            <div class="mode-desc">議論の経緯も含めて丁寧に。後から振り返りやすい。</div>
+          </div>
+        </div>
+
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <div class="prompt-label"><i class="ti ti-copy"></i> AIへの指示文（ChatGPT等にコピーして使う）</div>
+            <button class="copy-btn" onclick="copyPrompt()">📋 コピー</button>
+          </div>
+          <div class="prompt-text" id="prompt-display">---</div>
+        </div>
+
+        <div class="form-row">
+          <label>文字起こしデータ <span style="color:var(--red);font-size:11px">*必須</span></label>
+          <textarea id="transcription-input" rows="8" placeholder="録音を文字起こしたテキストをここに貼り付けてください。
+
+【例】
+えーと、今月の産廃の搬出なんですけど、吉岡さんのほうで在庫の確認をお願いしたいんですが。はいわかりました今月末までにやります。あと奈美さん、取引先への見積書なんですけどできるだけ早くお願いできますか？はい3日以内に送ります..."></textarea>
+        </div>
+        <button class="big-btn btn-primary" onclick="goStep2()">
+          <i class="ti ti-sparkles"></i> AIで議事録を作成 → STEP 2へ
+        </button>
+        <button class="big-btn btn-gray" onclick="skipToStep2()">
+          <i class="ti ti-pencil"></i> 整形済みテキストをそのまま使う
+        </button>
+      </div>
+    </div>
+
+    <div id="step2" style="display:none">
+      <div class="card-box">
+        <h3><i class="ti ti-file-check"></i> STEP 2　議事録を確認・編集</h3>
+        <p style="font-size:13px;color:#888;margin-bottom:12px;line-height:1.65">内容を確認し、必要であれば編集してください。</p>
+        <textarea id="minutes-result" rows="14" style="min-height:220px"></textarea>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="big-btn btn-primary" style="margin-bottom:0;flex:2" onclick="goStep3()">
+            <i class="ti ti-list-check"></i> タスクを抽出 → STEP 3へ
+          </button>
+          <button class="big-btn btn-gray" style="margin-bottom:0;flex:1" onclick="saveMinutesOnly()">
+            <i class="ti ti-device-floppy"></i> タスクなしで保存
+          </button>
+        </div>
+        <button class="big-btn btn-yellow" style="margin-top:8px" onclick="showStep(1)">
+          <i class="ti ti-arrow-left"></i> STEP 1 に戻る
+        </button>
+      </div>
+    </div>
+
+    <div id="step3" style="display:none">
+      <div class="card-box">
+        <h3><i class="ti ti-list-check"></i> STEP 3　タスクを確認して登録</h3>
+        <p style="font-size:13px;color:#888;margin-bottom:12px;line-height:1.65">担当者・期限を確認・編集してから登録してください。</p>
+        <div id="task-extract-area"></div>
+        <button class="big-btn btn-gray" onclick="showStep(2)">
+          <i class="ti ti-arrow-left"></i> STEP 2 に戻る
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-minutes" class="section" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:700;color:var(--main-dark)"><i class="ti ti-notebook"></i> 過去の議事録</div>
+      <button class="minutes-new-btn" onclick="switchTab('ai')"><i class="ti ti-plus"></i> 新規</button>
+    </div>
+    <div class="two-col" id="minutes-list"></div>
+  </div>
+
+  <div id="tab-members" class="section" style="display:none">
+    <div class="card-box">
+      <h3><i class="ti ti-users"></i> 担当者一覧</h3>
+      <div class="member-list" id="member-list"></div>
+    </div>
+    <div class="add-member-box">
+      <h4><i class="ti ti-user-plus"></i> 担当者を追加</h4>
+      <div class="inline-input-row">
+        <input id="new-member-name" type="text" placeholder="名前を入力（例：田中）" maxlength="10">
+        <button onclick="addMember()"><i class="ti ti-plus"></i> 追加</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-add" class="section" style="display:none">
+    <div style="max-width:560px;margin:0 auto">
+      <div class="card-box">
+        <h3><i class="ti ti-plus"></i> タスクを手動追加</h3>
+        <div class="form-row"><label>タスク内容</label><input id="f-title" type="text" placeholder="例：産廃搬出計画書の作成"></div>
+        <div class="form-row"><label>担当者</label><select id="f-person"></select></div>
+        <div class="form-row"><label>期限</label><input id="f-due" type="date"></div>
+        <div class="form-row"><label>ステータス</label>
+          <select id="f-status">
+            <option value="todo">未着手</option>
+            <option value="progress">進行中</option>
+            <option value="done">完了</option>
+          </select>
+        </div>
+        <button class="big-btn btn-primary" onclick="addManualTask()"><i class="ti ti-plus"></i> タスクを追加</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-area"></div>
+</div>
+
+<script>
+// ==================== Supabase設定 ====================
+const SUPABASE_URL  = "https://uzjftccxoipspazrtuvl.supabase.co";
+const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0ODIxNjAsImV4cCI6MjA2NDA0MjE2MH0.LidUv4Ea1nizjWfR0H0E2yqK_hZorv7zB7yq-62I7lE";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ==================== アプリ状態 ====================
+let members = ['園美','奈美','真美','恵一','美佳','矢板','月井','北浦','美咲','明日香','関根','吉岡'];
+let filterPerson = '全員';
+let currentMode   = 'brief';
+let currentStep   = 1;
+let tasks         = [];
+let minutesList   = [];
+let pendingTasks  = [];
+let pendingMid    = null;
+
+// ==================== Supabase CRUD ====================
+async function loadAll() {
+  setSyncBadge('loading');
+  try {
+    const [tr, mr] = await Promise.all([
+      db.from('task_list').select('*').order('id', {ascending:true}),
+      db.from('minutes_list').select('*').order('id', {ascending:true})
+    ]);
+    if (tr.error) throw tr.error;
+    tasks = (tr.data||[]).map(t=>({...t, due: t.due || ''}));
+    minutesList = (mr.data||[]).map(m=>({...m, task_ids: typeof m.task_ids==="string" ? JSON.parse(m.task_ids||"[]") : (m.task_ids||[])}));
+    setSyncBadge('ok');
+    renderAll();
+  } catch(e) {
+    console.error('DB load error:', e);
+    setSyncBadge('err');
+    document.getElementById('db-error-banner').style.display = 'flex';
+  }
+}
+
+async function dbInsertTask(t) {
+  const {data, error} = await db.from('task_list').insert([{
+    title: t.title, person: t.person, due: t.due,
+    status: t.status || 'todo',
+    from_meeting: t.from_meeting || false,
+    minutes_id: t.minutes_id || null
+  }]).select();
+  if (error) throw error;
+  return data[0];
+}
+async function dbUpdateTask(id, fields) {
+  const {error} = await db.from('task_list').update(fields).eq('id', id);
+  if (error) throw error;
+}
+async function dbDeleteTask(id) {
+  const {error} = await db.from('task_list').delete().eq('id', id);
+  if (error) throw error;
+}
+async function dbInsertMinutes(m) {
+  const {data, error} = await db.from('minutes_list').insert([{
+    title: m.title, date: m.date, members: m.members,
+    body: m.body, task_ids: JSON.stringify(m.task_ids || [])
+  }]).select();
+  if (error) throw error;
+  return data[0];
+}
+async function dbDeleteMinutes(id) {
+  const {error} = await db.from('minutes_list').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// ==================== 同期バッジ ====================
+function setSyncBadge(state) {
+  const badge   = document.getElementById('sync-badge');
+  const spinner = document.getElementById('sync-spinner');
+  if (state === 'ok') {
+    badge.className  = 'sync-badge ok';
+    badge.innerHTML  = '<i class="ti ti-cloud-check"></i> 同期済み';
+  } else if (state === 'err') {
+    badge.className  = 'sync-badge err';
+    badge.innerHTML  = '<i class="ti ti-wifi-off"></i> 接続エラー';
+  } else {
+    badge.className  = 'sync-badge loading';
+    badge.innerHTML  = '<span class="spinner"></span> 接続中';
+  }
+}
+
+// ==================== ユーティリティ ====================
+function today()    { return new Date().toISOString().split('T')[0]; }
+function daysLeft(due) { return Math.ceil((new Date(due) - new Date(today())) / 86400000); }
+function urgencyClass(due, status) {
+  if (status === 'done') return '';
+  const d = daysLeft(due);
+  return d <= 2 ? 'urgent' : d <= 5 ? 'warning' : '';
+}
+function daysLabel(due, status) {
+  if (status === 'done') return {cls:'gray', txt:'完了'};
+  const d = daysLeft(due);
+  if (d <  0) return {cls:'red',   txt: Math.abs(d)+'日超過'};
+  if (d === 0) return {cls:'red',   txt: '今日締切!'};
+  if (d <= 2)  return {cls:'red',   txt: '残'+d+'日'};
+  if (d <= 5)  return {cls:'amber', txt: '残'+d+'日'};
+  return              {cls:'green', txt: '残'+d+'日'};
+}
+function statusDot(s)   { return s==='todo'?'dot-todo':s==='progress'?'dot-progress':'dot-done'; }
+function statusLabel(s) { return s==='todo'?'未着手':s==='progress'?'進行中':'完了'; }
+function initials(name) { return (name||'？').slice(0,2); }
+function fmtDate(d)     { if(!d)return ''; const[y,m,dd]=d.split('-'); return y+'年'+parseInt(m)+'月'+parseInt(dd)+'日'; }
+function escHtml(s)     { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function isWide()       { return window.innerWidth >= 768; }
+
+// ==================== 担当者セレクト ====================
+function buildPersonSelect(selId, cur) {
+  const sel = document.getElementById(selId);
+  if (!sel) return;
+  sel.innerHTML = members.map(m =>
+    '<option value="'+m+'"'+(m===cur?' selected':'')+'>'+m+'</option>'
+  ).join('') + '<option value="その他"'+(cur==='その他'?' selected':'')+'>その他</option>';
+}
+
+// ==================== renderAll ====================
+function renderAll() {
+  renderSummary(); renderFilters(); renderTasks();
+  renderMinutes(); renderMembers();
+  buildPersonSelect('f-person', '');
+  updatePromptText();
+}
+
+// ==================== タスク一覧 ====================
+function renderSummary() {
+  const todo = tasks.filter(t=>t.status==='todo').length;
+  const prog = tasks.filter(t=>t.status==='progress').length;
+  const done = tasks.filter(t=>t.status==='done').length;
+  document.getElementById('summary').innerHTML =
+    '<div class="sum-card"><div class="sum-num" style="color:#C8C8B8">'+todo+'</div><div class="sum-lbl">未着手</div></div>'+
+    '<div class="sum-card"><div class="sum-num" style="color:var(--sky)">'+prog+'</div><div class="sum-lbl">進行中</div></div>'+
+    '<div class="sum-card"><div class="sum-num" style="color:var(--main)">'+done+'</div><div class="sum-lbl">完了</div></div>';
+}
+function renderFilters() {
+  document.getElementById('filter-row').innerHTML = ['全員',...members].map(p =>
+    '<button class="filter-chip '+(filterPerson===p?'active':'')+'" onclick="setFilter(\''+p+'\')">'+p+'</button>'
+  ).join('');
+}
+function setFilter(p) { filterPerson = p; renderTasks(); }
+
+function taskCardHtml(t) {
+  const uc   = urgencyClass(t.due, t.status);
+  const dl   = daysLabel(t.due, t.status);
+  const mtg = t.minutes_id ? minutesList.find(m=>m.id===t.minutes_id) : null;
+  const progressCls = (t.status==='progress' && !uc) ? 'in-progress-card' : '';
+  return '<div class="task-card '+uc+' '+progressCls+'" onclick="openTask('+t.id+')">'+
+    '<div class="task-top"><div class="task-title">'+escHtml(t.title)+'</div>'+
+    '<span class="days-badge '+dl.cls+'">'+dl.txt+'</span></div>'+
+    '<div class="task-meta">'+
+    '<span class="meta-chip"><div class="avatar">'+initials(t.person)+'</div>'+escHtml(t.person)+'</span>'+
+    '<span class="meta-chip"><i class="ti ti-calendar"></i>'+t.due+'</span>'+
+    (mtg ? '<span class="meeting-badge" onclick="event.stopPropagation();openMinutesDetail('+mtg.id+')"><i class="ti ti-notebook"></i>'+escHtml(mtg.title)+'</span>' : '')+
+    (t.from_meeting && !t.minutes_id ? '<span class="meeting-badge"><i class="ti ti-sparkles"></i>AI抽出</span>' : '')+
+    '</div></div>';
+}
+function renderTasks() {
+  const visible = filterPerson==='全員' ? tasks : tasks.filter(t=>t.person===filterPerson);
+  if (isWide()) {
+    document.getElementById('task-list-single').style.display='none';
+    document.getElementById('task-list-left').style.display='';
+    document.getElementById('task-list-right').style.display='';
+    let lh='', rh='';
+    [{key:'progress',label:'進行中'},{key:'todo',label:'未着手'}].forEach(g=>{
+      const gt = visible.filter(t=>t.status===g.key);
+      if (!gt.length) return;
+      lh += '<div class="status-group"><div class="status-label"><span class="status-dot '+statusDot(g.key)+'"></span>'+g.label+'（'+gt.length+'件）</div>';
+      gt.forEach(t=>{lh+=taskCardHtml(t);}); lh+='</div>';
+    });
+    const done = visible.filter(t=>t.status==='done');
+    if (done.length) {
+      break_placeholder_rh_group = '<div class="status-group"><div class="status-label"><span class="status-dot dot-done"></span>完了（'+done.length+'件）</div>';
+      done.forEach(t=>{rh+=taskCardHtml(t);}); rh+='</div>';
+    }
+    document.getElementById('task-list-left').innerHTML  = lh || '<div class="empty"><i class="ti ti-mood-smile"></i>タスクはありません</div>';
+    document.getElementById('task-list-right').innerHTML = rh;
+  } else {
+    document.getElementById('task-list-left').style.display='none';
+    document.getElementById('task-list-right').style.display='none';
+    document.getElementById('task-list-single').style.display='';
+    let html=''; let any=false;
+    [{key:'progress',label:'進行中'},{key:'todo',label:'未着手'},{key:'done',label:'完了'}].forEach(g=>{
+      const gt = visible.filter(t=>t.status===g.key);
+      if (!gt.length) return; any=true;
+      html += '<div class="status-group"><div class="status-label"><span class="status-dot '+statusDot(g.key)+'"></span>'+g.label+'（'+gt.length+'件）</div>';
+      gt.forEach(t=>{html+=taskCardHtml(t);}); html+='</div>';
+    });
+    document.getElementById('task-list-single').innerHTML = any ? html : '<div class="empty"><i class="ti ti-mood-smile"></i>タスクはありません</div>';
+  }
+}
+
+// ==================== タスク詳細モーダル ====================
+function openTask(id) {
+  const t   = tasks.find(x=>x.id===id);
+  if (!t) return;
+  const dl  = daysLabel(t.due, t.status);
+  const ns  = t.status==='todo'?'progress':t.status==='progress'?'done':'todo';
+  const nl  = ns==='progress'?'進行中にする':ns==='done'?'完了にする':'未着手に戻す';
+  const ni  = ns==='progress'?'ti-player-play':ns==='done'?'ti-check':'ti-rotate-clockwise';
+  const mtg = t.minutes_id ? minutesList.find(m=>m.id===t.minutes_id) : null;
+  const personOpts = members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('')
+    +'<option value="その他"'+(t.person==='その他'?' selected':'')+'>その他</option>';
+  document.getElementById('modal-area').innerHTML =
+    '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:8px">'+
+    '<h3 style="margin-bottom:0;color:#333;font-size:15px;line-height:1.4">'+escHtml(t.title)+'</h3>'+
+    '<button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1;flex-shrink:0">&times;</button></div>'+
+    '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">'+
+    '<div class="info-card"><div class="info-label">担当者</div>'+
+    '<select id="task-edit-person" style="width:100%;padding:9px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit;margin-top:4px">'+personOpts+'</select></div>'+
+    '<div class="info-card"><div class="info-label">期限</div>'+
+    '<input type="date" id="task-edit-due" value="'+t.due+'" style="width:100%;padding:9px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit;margin-top:4px"></div>'+
+    '<div class="info-card"><div class="info-label">ステータス</div>'+
+    '<div class="info-val" style="display:flex;align-items:center;gap:5px;margin-top:4px">'+
+    '<span class="status-dot '+statusDot(t.status)+'"></span>'+statusLabel(t.status)+
+    '<span class="days-badge '+dl.cls+'" style="margin-left:8px">'+dl.txt+'</span></div></div>'+
+    (mtg?'<div class="info-card" style="cursor:pointer" onclick="closeModal();openMinutesDetail('+mtg.id+')"><div class="info-label">出典議事録</div><div class="info-val" style="color:var(--main-dark);margin-top:4px"><i class="ti ti-notebook"></i> '+escHtml(mtg.title)+'（'+fmtDate(mtg.date)+'）</div></div>':'')+
+    '</div>'+
+    '<button class="big-btn btn-sky" onclick="saveTaskEdit('+id+')"><i class="ti ti-device-floppy"></i>担当者・期限を保存</button>'+
+    '<button class="big-btn btn-primary" onclick="changeStatus('+id+',\''+ns+'\')"><i class="ti '+ni+'"></i>'+nl+'</button>'+
+    '<button class="big-btn btn-danger" onclick="deleteTask('+id+')"><i class="ti ti-trash"></i>このタスクを削除</button>'+
+    '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i>閉じる</button>'+
+    '</div></div>';
+}
+async function saveTaskEdit(id) {
+  const person = document.getElementById('task-edit-person').value;
+  const due    = document.getElementById('task-edit-due').value;
+  if (!due) { alert('期限を入力してください'); return; }
+  await dbUpdateTask(id, {person, due});
+  await loadAll();
+  closeModal();
+}
+async function changeStatus(id, s) {
+  await dbUpdateTask(id, {status: s});
+  await loadAll();
+  closeModal();
+}
+async function deleteTask(id) {
+  if (!confirm('削除しますか？')) return;
+  await dbDeleteTask(id);
+  await loadAll();
+  closeModal();
+}
+function closeModal(e) {
+  if (!e || e.target.classList.contains('modal-bg'))
+    document.getElementById('modal-area').innerHTML = '';
+}
+
+// ==================== 議事録一覧 ====================
+function renderMinutes() {
+  const el = document.getElementById('minutes-list');
+  if (!el) return;
+  if (!minutesList.length) {
+    el.innerHTML = '<div class="empty" style="grid-column:1/-1"><i class="ti ti-notebook"></i>議事録がありません</div>';
+    return;
+  }
+  const sorted = [...minutesList].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const mHtml = m => {
+    const linked = tasks.filter(t=> (m.task_ids||[]).includes(t.id));
+    return '<div class="minutes-card" onclick="openMinutesDetail('+m.id+')">'+
+      '<div class="minutes-card-top"><div class="minutes-title"><i class="ti ti-notebook" style="color:var(--main);margin-right:5px"></i>'+escHtml(m.title)+'</div>'+
+      '<div style="font-size:12px;color:#aaa;white-space:nowrap">'+fmtDate(m.date)+'</div></div>'+
+      '<div class="minutes-meta">'+(m.members?'<span class="meta-chip"><i class="ti ti-users"></i>'+escHtml(m.members)+'</span>':'')+
+      (linked.length?'<span class="tag tag-tasks"><i class="ti ti-list-check" style="font-size:11px"></i> タスク'+linked.length+'件</span>':'<span class="tag tag-memo">メモのみ</span>')+
+      '</div><div class="minutes-preview">'+escHtml(m.body)+'</div></div>';
+  };
+  if (isWide()) {
+    const col1 = sorted.filter((_,i)=>i%2===0);
+    const col2 = sorted.filter((_,i)=>i%2===1);
+    el.innerHTML = '<div>'+col1.map(mHtml).join('')+'</div><div>'+col2.map(mHtml).join('')+'</div>';
+  } else {
+    el.innerHTML = '<div style="grid-column:1/-1">'+sorted.map(mHtml).join('')+'</div>';
+  }
+}
+function openMinutesDetail(id) {
+  const m = minutesList.find(x=>x.id===id); if(!m) return;
+  const linked = tasks.filter(t=>(m.task_ids||[]).includes(t.id));
+  let taskHtml = '';
+  if (linked.length) {
+    taskHtml = '<div style="margin-bottom:12px"><div class="info-label" style="margin-bottom:6px">関連タスク（'+linked.length+'件）</div>';
+    linked.forEach(t=>{
+      const dl = daysLabel(t.due, t.status);
+      taskHtml += '<div class="task-chip"><span class="status-dot '+statusDot(t.status)+'" style="width:7px;height:7px"></span>'+escHtml(t.person)+'：'+escHtml(t.title)+
+        '<span class="days-badge '+dl.cls+'" style="font-size:10px;padding:2px 7px">'+dl.txt+'</span></div>';
+    });
+    taskHtml += '</div>';
+  }
+  document.getElementById('modal-area').innerHTML =
+    '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:8px">'+
+    '<h3 style="margin-bottom:0;font-size:17px;color:var(--main-dark)">'+escHtml(m.title)+'</h3>'+
+    '<button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1">&times;</button></div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+
+    '<span class="meta-chip"><i class="ti ti-calendar"></i>'+fmtDate(m.date)+'</span>'+
+    (m.members?'<span class="meta-chip"><i class="ti ti-users"></i>'+escHtml(m.members)+'</span>':'')+
+    '</div>'+taskHtml+
+    '<div class="info-label" style="margin-bottom:6px">議事録</div>'+
+    '<div class="minutes-body">'+escHtml(m.body)+'</div>'+
+    '<button class="big-btn btn-danger" onclick="deleteMinutes('+id+')"><i class="ti ti-trash"></i>この議事録を削除</button>'+
+    '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i>閉じる</button>'+
+    '</div></div>';
+}
+async function deleteMinutes(id) {
+  if (!confirm('この議事録を削除しますか？\n（関連タスクは残ります）')) return;
+  await dbDeleteMinutes(id);
+  await loadAll();
+  closeModal();
+}
+
+// ==================== 担当者管理 ====================
+function renderMembers() {
+  const el = document.getElementById('member-list');
+  if (!el) return;
+  el.innerHTML = members.map((m,i) => {
+    const cnt = tasks.filter(t=>t.person===m).length;
+    return '<div class="member-row">'+
+      '<div class="member-avatar-lg">'+initials(m)+'</div>'+
+      '<div class="member-name">'+escHtml(m)+'</div>'+
+      '<div class="member-task-count"><i class="ti ti-list-check"></i> '+cnt+'件</div>'+
+      '<div class="member-actions">'+
+        '<button class="icon-btn edit" onclick="editMember('+i+')"><i class="ti ti-pencil"></i></button>'+
+        '<button class="icon-btn del" onclick="deleteMember('+i+')"><i class="ti ti-trash"></i></button>'+
+      '</div></div>';
+  }).join('');
+}
+function addMember() {
+  const inp  = document.getElementById('new-member-name');
+  const name = inp.value.trim();
+  if (!name) { alert('名前を入力してください'); return; }
+  if (members.includes(name)) { alert('同じ名前が既に存在します'); return; }
+  members.push(name); inp.value=''; renderAll();
+}
+function editMember(i) {
+  const old = members[i];
+  document.getElementById('modal-area').innerHTML =
+    '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'+
+    '<h3 style="margin-bottom:0;color:var(--main-dark)"><i class="ti ti-pencil"></i> 担当者名を変更</h3>'+
+    '<button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1">&times;</button></div>'+
+    '<div class="form-row"><label>現在の名前</label><div style="padding:10px 14px;background:var(--gray-light);border-radius:10px;font-size:15px;font-weight:600;color:#555">'+escHtml(old)+'</div></div>'+
+    '<div class="form-row"><label>新しい名前</label>'+
+    '<input id="edit-member-input" type="text" value="'+escHtml(old)+'" maxlength="10" style="width:100%;padding:12px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit"></div>'+
+    '<button class="big-btn btn-primary" onclick="confirmEditMember('+i+')"><i class="ti ti-check"></i> 変更を保存</button>'+
+    '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i> キャンセル</button>'+
+    '</div></div>';
+  setTimeout(()=>{const el=document.getElementById('edit-member-input');if(el){el.focus();el.select();}},80);
+}
+function confirmEditMember(i) {
+  const newName = document.getElementById('edit-member-input').value.trim();
+  if (!newName) { alert('名前を入力してください'); return; }
+  if (members.includes(newName) && members[i]!==newName) { alert('同じ名前が既に存在します'); return; }
+  const old = members[i];
+  members[i] = newName;
+  tasks = tasks.map(t => t.person===old ? {...t, person:newName} : t);
+  closeModal(); renderAll();
+}
+function deleteMember(i) {
+  const name = members[i];
+  const cnt  = tasks.filter(t=>t.person===name).length;
+  if (!confirm('「'+name+'」を削除しますか？'+(cnt?'\nこの担当者のタスクが'+cnt+'件あります。「その他」に変更されます。':''))) return;
+  members.splice(i,1);
+  if (cnt) tasks = tasks.map(t => t.person===name ? {...t, person:'その他'} : t);
+  if (filterPerson===name) filterPerson='全員';
+  renderAll();
+}
+
+// ==================== AI議事録 3ステップ ====================
+function showStep(n) {
+  currentStep = n;
+  [1,2,3].forEach(s => {
+    document.getElementById('step'+s).style.display = s===n ? 'block' : 'none';
+  });
+  renderStepIndicator(n);
+}
+function renderStepIndicator(step) {
+  const steps = [{n:1,label:'文字起こし'},{n:2,label:'議事録確認'},{n:3,label:'タスク登録'}];
+  document.getElementById('step-indicator').innerHTML = steps.map(s=>{
+    const cls  = s.n<step?'done':s.n===step?'active':'';
+    const icon = s.n<step?'<i class="ti ti-check"></i>':String(s.n);
+    return '<div class="step-item">'+
+      '<div class="step-circle '+cls+'">'+icon+'</div>'+
+      '<div class="step-lbl '+cls+'">'+s.label+'</div>'+
+      '</div>';
+  }).join('');
+}
+function selectMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-brief').classList.toggle('selected', mode==='brief');
+  document.getElementById('mode-detail').classList.toggle('selected', mode==='detail');
+  updatePromptText();
+}
+function updatePromptText() {
+  const title = (document.getElementById('meeting-title')||{}).value?.trim() || '無題の会議';
+  const members_str = members.join('、');
+  const modeText = currentMode==='brief'
+    ? '箇条書きで、要点を絞って簡潔にまとめてください。決定事項・担当者・期限を中心に整理してください。'
+    : '議論のプロセスが詳細にわかるように丁寧にまとめてください。話し合いの経緯・背景・意見の流れも含めて記録してください。';
+  const prompt =
+    '以下の会議の文字起こしデータを議事録にまとめてください。\n\n'+
+    '【会議名】'+title+'\n'+
+    '【参加者候補】'+members_str+'\n\n'+
+    '【指示】\n'+modeText+'\n'+
+    '- 話し言葉やフィラー（えーと、あのー等）は除去してください\n'+
+    '- 誰が何をいつまでにやるかを明確に記録してください\n'+
+    '- 「誰：タスク内容（期限）」の形式でアクションアイテムをまとめてください\n\n'+
+    '【文字起こしデータ】\n（ここに文字起こしテキストを貼り付けてください）';
+  const el = document.getElementById('prompt-display');
+  if (el) el.innerText = prompt;
+}
+function copyPrompt() {
+  const text = document.getElementById('prompt-display').innerText;
+  navigator.clipboard.writeText(text).then(()=>alert('指示文をコピーしました！\nChatGPT等に貼り付けて使ってください。'));
+}
+function goStep2() {
+  const title = document.getElementById('meeting-title').value.trim();
+  const body  = document.getElementById('transcription-input').value.trim();
+  if (!title) { alert('会議タイトルを入力してください'); return; }
+  if (!body)  { alert('文字起こしデータを入力してください'); return; }
+  // ルールベースで議事録整形
+  const result = formatMinutes(body, title, currentMode);
+  document.getElementById('minutes-result').value = result;
+  showStep(2);
+}
+function skipToStep2() {
+  const title = document.getElementById('meeting-title').value.trim();
+  if (!title) { alert('会議タイトルを入力してください'); return; }
+  const body = document.getElementById('transcription-input').value.trim();
+  document.getElementById('minutes-result').value = body;
+  showStep(2);
+}
+function formatMinutes(text, title, mode) {
+  const date    = document.getElementById('meeting-date').value;
+  const mems    = document.getElementById('meeting-members').value.trim();
+  // フィラー除去
+  let cleaned = text
+    .replace(/えーと[、,\s]*/g,'').replace(/あのー?[、,\s]*/g,'').replace(/えー[、,\s]*/g,'')
+    .replace(/まあ[、,\s]*/g,'').replace(/なんか[、,\s]*/g,'').replace(/そのー?[、,\s]*/g,'')
+    .replace(/\s+/g,' ').trim();
+  const sentences = cleaned.split(/[。\n]/).map(s=>s.trim()).filter(s=>s.length>3);
+  const actionVerbs=['作成','提出','送付','発注','確認','完了','報告','連絡','対応','手配','準備','整備','調整','集計','検討','実施','依頼','申請','お願い'];
+  const taskSents  = sentences.filter(s=>actionVerbs.some(v=>s.includes(v)));
+  const otherSents = sentences.filter(s=>!actionVerbs.some(v=>s.includes(v)));
+  let result = '【'+title+'】議事録\n';
+  if(date) result += '日時：'+fmtDate(date)+'\n';
+  if(mems) result += '参加者：'+mems+'\n';
+  result += '\n';
+  if (mode==='brief') {
+    result += '■ 決定事項・アクションアイテム\n';
+    (taskSents.length ? taskSents : ['（アクションアイテムが検出されませんでした）']).slice(0,15).forEach(s=>{result+='・'+s+'\n';});
+    if(otherSents.length){result+='\n■ その他議題\n';otherSents.slice(0,8).forEach(s=>{result+='・'+s+'\n';});}
+  } else {
+    result += '■ 議事内容\n\n';
+    sentences.slice(0,30).forEach(s=>{result+=s+'。\n';});
+    result += '\n■ 決定事項・アクションアイテム\n';
+    (taskSents.length ? taskSents : ['（アクションアイテムが検出されませんでした）']).slice(0,15).forEach(s=>{result+='・'+s+'\n';});
+  }
+  return result;
+}
+async function goStep3() {
+  const body  = document.getElementById('minutes-result').value.trim();
+  const title = document.getElementById('meeting-title').value.trim();
+  const date  = document.getElementById('meeting-date').value;
+  const mems  = document.getElementById('meeting-members').value.trim();
+  if (!body) { alert('議事録が空です'); return; }
+  // 議事録をDBに保存
+  const saved = await dbInsertMinutes({title, date:date||today(), members:mems, body, task_ids:[]});
+  pendingMid  = saved.id;
+  // タスク抽出
+  pendingTasks = extractTasksFromText(body);
+  showStep(3);
+  renderTaskExtract(pendingTasks, pendingMid);
+  await loadAll();
+}
+function extractTasksFromText(text) {
+  const lines = text.split(/[\n。]/);
+  const results=[];
+  const defDue = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+  const duePats=[
+    {r:/(\d+)月(\d+)日/,fn:m=>{const y=new Date().getFullYear();return new Date(y,parseInt(m[1])-1,parseInt(m[2])).toISOString().split('T')[0]}},
+    {r:/来週/,fn:()=>new Date(Date.now()+7*86400000).toISOString().split('T')[0]},
+    {r:/今週中|今週/,fn:()=>new Date(Date.now()+4*86400000).toISOString().split('T')[0]},
+    {r:/今月末/,fn:()=>{const d=new Date();d.setMonth(d.getMonth()+1,0);return d.toISOString().split('T')[0]}},
+    {r:/(\d+)日以内/,fn:m=>new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0]},
+    {r:/(\d+)日後/,fn:m=>new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0]},
+    {r:/明日/,fn:()=>new Date(Date.now()+86400000).toISOString().split('T')[0]},
+    {r:/今日/,fn:()=>today()},
+  ];
+  const verbs=['作成','提出','送付','発注','確認','完了','報告','連絡','対応','手配','準備','整備','取りまとめ','調整','集計','検討','実施','依頼','申請'];
+  lines.forEach(line=>{
+    const l=line.trim(); if(l.length<4)return;
+    let person='その他';
+    for(const name of members){if(l.includes(name)){person=name;break;}}
+    if(!verbs.some(v=>l.includes(v)))return;
+    let due=defDue;
+    for(const p of duePats){const m=l.match(p.r);if(m){try{due=p.fn(m);}catch(e){}break;}}
+    let title=l.replace(/^[・\-\*\s【】■]+/,'').replace(/[。、！!？?]$/,'').trim();
+    title=title.replace(/^.{0,8}[さん]?[：:がはも]\s*/,'');
+    if(title.length<4||title.length>60)return;
+    results.push({title, person, due});
+  });
+  const seen=new Set();
+  return results.filter(t=>{if(seen.has(t.title))return false;seen.add(t.title);return true;});
+}
+function renderTaskExtract(extracted, mid) {
+  const area = document.getElementById('task-extract-area');
+  if (!extracted.length) {
+    area.innerHTML =
+      '<div style="background:var(--amber-light);border:2px solid #FFD98A;border-radius:12px;padding:14px;margin-bottom:12px;font-size:14px;color:#8B5500">'+
+      '<i class="ti ti-alert-triangle"></i> タスクが自動検出されませんでした。手動で追加してください。</div>'+
+      '<button class="big-btn btn-primary" onclick="switchTab(\'add\')"><i class="ti ti-plus"></i> 手動でタスクを追加</button>';
+    return;
+  }
+  let html = '<div style="font-size:13px;color:#888;margin-bottom:10px"><i class="ti ti-sparkles"></i> '+extracted.length+'件のタスクを検出。確認・編集してください。</div>';
+  extracted.forEach((t,i)=>{
+    const opts = members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('')
+      +'<option value="その他"'+(t.person==='その他'?' selected':'')+'>その他</option>';
+    html += '<div class="extracted-task-row">'+
+      '<div class="task-text">'+escHtml(t.title)+'</div>'+
+      '<select id="ep-'+i+'">'+opts+'</select>'+
+      '<input type="date" id="ed-'+i+'" value="'+t.due+'">'+
+      '</div>';
+  });
+  html += '<button class="big-btn btn-primary" style="margin-top:8px" onclick="confirmAndRegister('+mid+')">'+
+    '<i class="ti ti-check"></i> タスクを登録する</button>';
+  area.innerHTML = html;
+}
+async function confirmAndRegister(mid) {
+  const newIds=[];
+  for(let i=0;i<pendingTasks.length;i++){
+    const t      = pendingTasks[i];
+    const person = document.getElementById('ep-'+i)?.value || t.person;
+    const due    = document.getElementById('ed-'+i)?.value  || t.due;
+    const saved  = await dbInsertTask({title:t.title, person, due, status:'todo', from_meeting:true, minutes_id:mid});
+    newIds.push(saved.id);
+  }
+  // 議事録のtask_idsを更新
+  await db.from("minutes_list").update({task_ids: JSON.stringify(newIds)}).eq('id', mid);
+  pendingTasks=[]; pendingMid=null;
+  clearAIForm();
+  await loadAll();
+  switchTab('tasks');
+}
+async function saveMinutesOnly() {
+  const body  = document.getElementById('minutes-result').value.trim();
+  const title = document.getElementById('meeting-title').value.trim();
+  const date  = document.getElementById('meeting-date').value;
+  const mems  = document.getElementById('meeting-members').value.trim();
+  if (!body) { alert('議事録が空です'); return; }
+  await dbInsertMinutes({title, date:date||today(), members:mems, body, task_ids:[]});
+  clearAIForm(); await loadAll();
+  alert('議事録を保存しました');
+  switchTab('minutes');
+}
+function clearAIForm() {
+  ['meeting-title','meeting-members'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('meeting-date').value = today();
+  document.getElementById('transcription-input').value = '';
+  document.getElementById('minutes-result').value = '';
+  showStep(1);
+}
+
+// ==================== タスク手動追加 ====================
+async function addManualTask() {
+  const title  = document.getElementById('f-title').value.trim();
+  const person = document.getElementById('f-person').value;
+  const due    = document.getElementById('f-due').value;
+  const status = document.getElementById('f-status').value;
+  if (!title||!due) { alert('タスク内容と期限を入力してください'); return; }
+  await dbInsertTask({title, person, due, status, from_meeting:false, minutes_id:null});
+  document.getElementById('f-title').value = '';
+  await loadAll();
+  switchTab('tasks');
+}
+
+// ==================== タブ切替 ====================
+function switchTab(tab) {
+  ['tasks','ai','minutes','members','add'].forEach(t=>{
+    const el = document.getElementById('tab-'+t);
+    if (el) el.style.display = t===tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((el,i)=>{
+    el.classList.toggle('active', ['tasks','ai','minutes','members','add'][i]===tab);
+  });
+  if (tab==='minutes') renderMinutes();
+  if (tab==='members') renderMembers();
+  if (tab==='ai')      showStep(1);
+}
+
+// ==================== 起動 ====================
+window.addEventListener('resize', ()=>{ renderTasks(); renderMinutes(); });
+document.getElementById('f-due').value = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+document.getElementById('meeting-date').value = today();
+showStep(1);
+loadAll();
+</script>
+</body>
+</html>
