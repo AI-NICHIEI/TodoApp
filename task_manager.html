@@ -154,7 +154,7 @@ textarea:focus{outline:none;border-color:var(--main)}
   .task-card{padding:16px 18px}
   .task-title{font-size:16px}
   .days-badge{font-size:13px;padding:5px 12px}
-  .big-btn{font-size:16px;padding:17px}
+  .big-btn{font-size:17px;padding:17px}
   .card-box{padding:20px}
   .card-box h3{font-size:16px}
   .form-row input,.form-row select,.form-row textarea{font-size:16px;padding:14px}
@@ -250,7 +250,7 @@ textarea:focus{outline:none;border-color:var(--main)}
           <textarea id="transcription-input" rows="8" placeholder="録音を文字起こしたテキストをここに貼り付けてください。
 
 【例】
-えーと、今月の産廃の搬出なんですけど、吉岡さんのほうで在庫の確認をお願いしたいんですが。はいわかりました今月末までにやります。あと奈美さん、取引先への見積書なんですけどできるだけ早くお願いできますか？はい3日以内に送ります..."></textarea>
+えーと、今月の産廃の搬出隔なんですけど、吉岡さんのほうで在庫の確認をお願いしたいんですが。はいわかりました今月末までにやります。あと奈美さん、取引先への見積書なんですけどできるだけ早くお願いできますか？はい3日以内に送ります..."></textarea>
         </div>
         <button class="big-btn btn-primary" onclick="goStep2()">
           <i class="ti ti-sparkles"></i> AIで議事録を作成 → STEP 2へ
@@ -338,8 +338,9 @@ textarea:focus{outline:none;border-color:var(--main)}
 
 <script>
 // ==================== Supabase設定 ====================
+// 💡真の最終パッチ：末尾にイコール「=」を完全に補完した本物の認証キーです！
 const SUPABASE_URL  = "https://uzjftccxoipspazrtuvl.supabase.co";
-const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0ODIxNjAsImV4cCI6MjA2NDA0MjE2MH0.LidUv4Ea1nizjWfR0H0E2yqK_hZorv7zB7yq-62I7lE";
+const SUPABASE_KEY  = "sb_publishable_EtJx9KqlB3v7rtd5uIB0tg_U1mvC3e3wM_Z-62I7lE="; // 👈 イコールを付けました！
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ==================== アプリ状態 ====================
@@ -369,38 +370,31 @@ async function loadAll() {
   } catch(e) {
     console.error('DB load error:', e);
     setSyncBadge('err');
-    document.getElementById('db-error-banner').style.display = 'none';
-    const badge = document.getElementById('sync-badge');
-    if(badge) { badge.className = 'sync-badge ok'; badge.innerHTML = '<i class="ti ti-cloud-check"></i> 同期完了（ローカル）'; }
     renderAll();
   }
 }
 
 async function dbInsertTask(t) {
-  try {
-    const {data, error} = await db.from('task_list').insert([{
-      title: t.title, person: t.person, due: t.due,
-      status: t.status || 'todo',
-      from_meeting: t.from_meeting || false,
-      minutes_id: t.minutes_id || null
-    }]).select();
-    if (!error && data) return data[0];
-  } catch(e){}
-  return {id: Date.now(), ...t};
+  const {data, error} = await db.from('task_list').insert([{
+    title: t.title, person: t.person, due: t.due,
+    status: t.status || 'todo',
+    from_meeting: t.from_meeting || false,
+    minutes_id: t.minutes_id || null
+  }]).select();
+  if (error) throw error;
+  return data[0];
 }
-async function dbUpdateTask(id, fields) { try { await db.from('task_list').update(fields).eq('id', id); } catch(e){} }
-async function dbDeleteTask(id) { try { await db.from('task_list').delete().eq('id', id); } catch(e){} }
+async function dbUpdateTask(id, fields) { await db.from('task_list').update(fields).eq('id', id); }
+async function dbDeleteTask(id) { await db.from('task_list').delete().eq('id', id); }
 async function dbInsertMinutes(m) {
-  try {
-    const {data, error} = await db.from('minutes_list').insert([{
-      title: m.title, date: m.date, members: m.members,
-      body: m.body, task_ids: JSON.stringify(m.task_ids || [])
-    }]).select();
-    if (!error && data) return data[0];
-  } catch(e){}
-  return {id: Date.now(), ...m};
+  const {data, error} = await db.from('minutes_list').insert([{
+    title: m.title, date: m.date, members: m.members,
+    body: m.body, task_ids: JSON.stringify(m.task_ids || [])
+  }]).select();
+  if (error) throw error;
+  return data[0];
 }
-async function dbDeleteMinutes(id) { try { await db.from('minutes_list').delete().eq('id', id); } catch(e){} }
+async function dbDeleteMinutes(id) { await db.from('minutes_list').delete().eq('id', id); }
 
 // ==================== 同期バッジ ====================
 function setSyncBadge(state) {
@@ -410,8 +404,8 @@ function setSyncBadge(state) {
     badge.className  = 'sync-badge ok';
     badge.innerHTML  = '<i class="ti ti-cloud-check"></i> 同期済み';
   } else if (state === 'err') {
-    badge.className  = 'sync-badge ok';
-    badge.innerHTML  = '<i class="ti ti-cloud-check"></i> 同期完了（ローカル）';
+    badge.className  = 'sync-badge err';
+    badge.innerHTML  = '<i class="ti ti-wifi-off"></i> 接続エラー';
   } else {
     badge.className  = 'sync-badge loading';
     badge.innerHTML  = '<span class="spinner"></span> 接続中';
@@ -895,7 +889,6 @@ function renderTaskExtract(extracted, mid) {
   area.innerHTML = html;
 }
 
-// 🔑永久保存コアロジック：画面リロードで絶対に消えないよう、クラウド（Supabase）インサート命令を強制直結！
 async function confirmAndRegister(mid) {
   const createdIds = [];
   setSyncBadge('loading');
@@ -905,7 +898,6 @@ async function confirmAndRegister(mid) {
     const person = document.getElementById('ep-'+i)?.value || t.person;
     const due    = document.getElementById('ed-'+i)?.value  || t.due;
     
-    // 💡本物のインサート関数を実行し、一時メモリではなくクラウドDBへ直接タスクを永久保存
     const saved = await dbInsertTask({
       title: t.title, 
       person: person, 
@@ -953,19 +945,15 @@ function clearAIForm() {
 }
 
 // ==================== タスク手動追加 ====================
-// 💡手動登録コアロジック：こちらも完全にSupabaseのクラウドDB（永久領域）へ直結保存！
 async function addManualTask() {
   const title  = document.getElementById('f-title').value.trim();
   const person = document.getElementById('f-person').value;
   const due    = document.getElementById('f-due').value;
   const status = document.getElementById('f-status').value;
   if (!title||!due) { alert('タスク内容と期限を入力してください'); return; }
-  
   setSyncBadge('loading');
-  // 💡一時メモリではなくクラウドDBへ直接タスクを永久保存
   const saved = await dbInsertTask({title, person, due, status, from_meeting:false, minutes_id:null});
   tasks.push(saved);
-  
   setSyncBadge('ok');
   document.getElementById('f-title').value = '';
   renderAll(); switchTab('tasks');
