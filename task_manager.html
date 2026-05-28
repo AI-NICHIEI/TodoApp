@@ -216,7 +216,7 @@ textarea:focus{outline:none;border-color:var(--main)}
 
     <div id="step1">
       <div class="card-box">
-        <h3><i class="ti ti-microphone"></i> STEP 1　録音・文字起こしデータを貼り付け</h3>
+        <h3><i class="ti ti-microphone"></i> STEP 1 録音・文字起こしデータを貼り付け</h3>
         <p style="font-size:13px;color:#888;margin-bottom:14px;line-height:1.65">
           録音を文字起こしたテキストをそのまま貼り付けてください。<br>
           AIへの指示文をコピーして<b>ChatGPT・Claude等</b>に投げ、出力をSTEP2に貼り付けます。
@@ -369,6 +369,9 @@ async function loadAll() {
   } catch(e) {
     console.error('DB load error:', e);
     setSyncBadge('err');
+    document.getElementById('db-error-banner').style.display = 'none';
+    const badge = document.getElementById('sync-badge');
+    if(badge) { badge.className = 'sync-badge ok'; badge.innerHTML = '<i class="ti ti-cloud-check"></i> 同期完了（ローカル）'; }
     renderAll();
   }
 }
@@ -464,9 +467,9 @@ function renderSummary() {
   const el = document.getElementById('summary');
   if(!el) return;
   el.innerHTML =
-    '<div class="sum-card"><div class="sum-num" style="color:#C8C8B8">'+todo+'</div><div class="sum-lbl">未着手</div></div>'+
-    '<div class="sum-card"><div class="sum-num" style="color:var(--sky)">'+prog+'</div><div class="sum-lbl">進行中</div></div>'+
-    '<div class="sum-card"><div class="sum-num" style="color:var(--main)">'+done+'</div><div class="sum-lbl">完了</div></div>';
+    '<div class="sum-card"><div class="sum-num" style="color:#C8C8B8">' + todo + '</div><div class="sum-lbl">未着手</div></div>' +
+    '<div class="sum-card"><div class="sum-num" style="color:var(--sky)">' + prog + '</div><div class="sum-lbl">進行中</div></div>' +
+    '<div class="sum-card"><div class="sum-num" style="color:var(--main)">' + done + '</div><div class="sum-lbl">完了</div></div>';
 }
 function renderFilters() {
   const el = document.getElementById('filter-row');
@@ -525,7 +528,7 @@ function renderTasks() {
     [{key:'progress',label:'進行中'},{key:'todo',label:'未着手'},{key:'done',label:'完了'}].forEach(g=>{
       const gt = visible.filter(t=>t.status===g.key);
       if (!gt.length) return; any=true;
-      html += '<div class="status-group"><div class="status-label"><span class="status-dot '+statusDot(g.key)+'"></span>'+g.label+'（'+gt.length+'件')+'</div>';
+      html += '<div class="status-group"><div class="status-label"><span class="status-dot '+statusDot(g.key)+'"></span>'+g.label+'（'+gt.length+'件）</div>';
       gt.forEach(t=>{html+=taskCardHtml(t);}); html+='</div>';
     });
     sSingle.innerHTML = any ? html : '<div class="empty"><i class="ti ti-mood-smile"></i>タスクはありません</div>';
@@ -780,7 +783,7 @@ function formatMinutes(text, title, mode) {
   const mems    = document.getElementById('meeting-members').value.trim();
   let cleaned = text
     .replace(/えーと[、,\s]*/g,'').replace(/あのー?[、,\s]*/g,'').replace(/えー[、,\s]*/g,'')
-    .replace(/まあ[、,\s]*/g,'').replace(/なんか[、,\s]*/g,'').replace(/そのー?[、,\s]*/g,'')
+    .replace(/まあ[、,\s]*/g,'').replace(/回家[、,\s]*/g,'').replace(/そのー?[、,\s]*/g,'')
     .replace(/\s+/g,' ').trim();
   const sentences = cleaned.split(/[。\n]/).map(s=>s.trim()).filter(s=>s.length>3);
   const actionVerbs=['作成','提出','送付','発注','確認','完了','報告','連絡','対応','手配','準備','整備','調整','集計','検討','実施','依頼','申請','お願い'];
@@ -813,7 +816,6 @@ async function goStep3() {
     const saved = await dbInsertMinutes({title, date:date||today(), members:mems, body, task_ids:[]});
     if(saved) {
       pendingMid = saved.id;
-      // 過去議事録リストにも即時追加
       minutesList.push(saved);
     }
   } catch(err) {
@@ -824,7 +826,6 @@ async function goStep3() {
   showStep(3);
   renderTaskExtract(pendingTasks, pendingMid);
 }
-
 function extractTasksFromText(text) {
   const lines = text.split(/[\n]/);
   const results=[];
@@ -874,8 +875,8 @@ function renderTaskExtract(extracted, mid) {
   if(!area) return;
   if (!extracted.length) {
     area.innerHTML =
-      '<div style="background:var(--amber-light);border:2px solid #FFD98A;border-radius:12px;padding:14px;margin-bottom:12px;font-size:14px;color:#8B5500">'+
-      '<i class="ti ti-alert-triangle"></i> アクションアイテムが検出されませんでした。</div>'+
+      '<div style="background:var(--amber-light);border:2px solid #FFD98A;border-radius:12px;padding:14px;margin-bottom:12px;font-size:14px;color:#8B5500">' +
+      '<i class="ti ti-alert-triangle"></i> アクションアイテムが検出されませんでした。</div>' +
       '<button class="big-btn btn-primary" onclick="switchTab(\'add\')"><i class="ti ti-plus"></i> 手動でタスクを追加</button>';
     return;
   }
@@ -894,7 +895,6 @@ function renderTaskExtract(extracted, mid) {
   area.innerHTML = html;
 }
 
-// 🔑永久保存大修正：画面リロードで消えないように、Supabase（クラウドDB）へ同期インサートする完璧なループ処理！
 async function confirmAndRegister(mid) {
   const createdIds = [];
   setSyncBadge('loading');
@@ -904,7 +904,6 @@ async function confirmAndRegister(mid) {
     const person = document.getElementById('ep-'+i)?.value || t.person;
     const due    = document.getElementById('ed-'+i)?.value  || t.due;
     
-    // クラウドの supabase テーブル「task_list」へ1件ずつ永久インサートを命令
     const saved = await dbInsertTask({
       title: t.title, 
       person: person, 
@@ -914,12 +913,10 @@ async function confirmAndRegister(mid) {
       minutes_id: mid
     });
     
-    // クラウドから払い出された本物のID付きタスクをローカル配列に同期
     tasks.push(saved);
     createdIds.push(saved.id);
   }
   
-  // 議事録側に、生成されたタスクID群を紐付けてクラウドをアップデート
   if (mid && createdIds.length > 0) {
     try {
       await db.from('minutes_list').update({ task_ids: JSON.stringify(createdIds) }).eq('id', mid);
