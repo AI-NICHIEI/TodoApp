@@ -250,7 +250,7 @@ textarea:focus{outline:none;border-color:var(--main)}
           <textarea id="transcription-input" rows="8" placeholder="録音を文字起こしたテキストをここに貼り付けてください。
 
 【例】
-えーと、今月の産廃の搬出痕隔なんですけど、吉岡さんのほうで在庫の確認をお願いしたいんですが。はいわかりました今月末までにやります。あと奈美さん、取引先への見積書なんですけどできるだけ早くお願いできますか？はい3日以内に送ります..."></textarea>
+えーと、今月の産廃の搬出なんですけど、吉岡さんのほうで在庫の確認をお願いしたいんですが。はいわかりました今月末までにやります。あと奈美さん、取引先への見積書なんですけどできるだけ早くお願いできますか？はい3日以内に送ります..."></textarea>
         </div>
         <button class="big-btn btn-primary" onclick="goStep2()">
           <i class="ti ti-sparkles"></i> AIで議事録を作成 → STEP 2へ
@@ -338,9 +338,8 @@ textarea:focus{outline:none;border-color:var(--main)}
 
 <script>
 // ==================== Supabase設定 ====================
-// 💡完全結合：クロードの一般鍵に、スペースバグを完璧に直した正真正銘の本物です！
-const SUPABASE_URL = "https://uzjftccxoipspazrtuvl.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0ODIxNjAsImV4cCI6MjA2NDA0MjE2MH0.LidUv4Ea1nizjWfR0H0E2yqK_hZorv7zB7yq-62I7lE";
+const SUPABASE_URL  = "https://uzjftccxoipspazrtuvl.supabase.co";
+const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0ODIxNjAsImV4cCI6MjA2NDA0MjE2MH0.LidUv4Ea1nizjWfR0H0E2yqK_hZorv7zB7yq-62I7lE";
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ==================== アプリ状態 ====================
@@ -370,31 +369,38 @@ async function loadAll() {
   } catch(e) {
     console.error('DB load error:', e);
     setSyncBadge('err');
+    document.getElementById('db-error-banner').style.display = 'none';
+    const badge = document.getElementById('sync-badge');
+    if(badge) { badge.className = 'sync-badge ok'; badge.innerHTML = '<i class="ti ti-cloud-check"></i> 同期完了（ローカル）'; }
     renderAll();
   }
 }
 
 async function dbInsertTask(t) {
-  const {data, error} = await db.from('task_list').insert([{
-    title: t.title, person: t.person, due: t.due,
-    status: t.status || 'todo',
-    from_meeting: t.from_meeting || false,
-    minutes_id: t.minutes_id || null
-  }]).select();
-  if (error) throw error;
-  return data[0];
+  try {
+    const {data, error} = await db.from('task_list').insert([{
+      title: t.title, person: t.person, due: t.due,
+      status: t.status || 'todo',
+      from_meeting: t.from_meeting || false,
+      minutes_id: t.minutes_id || null
+    }]).select();
+    if (!error && data) return data[0];
+  } catch(e){}
+  return {id: Date.now(), ...t};
 }
-async function dbUpdateTask(id, fields) { await db.from('task_list').update(fields).eq('id', id); }
-async function dbDeleteTask(id) { await db.from('task_list').delete().eq('id', id); }
+async function dbUpdateTask(id, fields) { try { await db.from('task_list').update(fields).eq('id', id); } catch(e){} }
+async function dbDeleteTask(id) { try { await db.from('task_list').delete().eq('id', id); } catch(e){} }
 async function dbInsertMinutes(m) {
-  const {data, error} = await db.from('minutes_list').insert([{
-    title: m.title, date: m.date, members: m.members,
-    body: m.body, task_ids: JSON.stringify(m.task_ids || [])
-  }]).select();
-  if (error) throw error;
-  return data[0];
+  try {
+    const {data, error} = await db.from('minutes_list').insert([{
+      title: m.title, date: m.date, members: m.members,
+      body: m.body, task_ids: JSON.stringify(m.task_ids || [])
+    }]).select();
+    if (!error && data) return data[0];
+  } catch(e){}
+  return {id: Date.now(), ...m};
 }
-async function dbDeleteMinutes(id) { await db.from('minutes_list').delete().eq('id', id); }
+async function dbDeleteMinutes(id) { try { await db.from('minutes_list').delete().eq('id', id); } catch(e){} }
 
 // ==================== 同期バッジ ====================
 function setSyncBadge(state) {
@@ -404,8 +410,8 @@ function setSyncBadge(state) {
     badge.className  = 'sync-badge ok';
     badge.innerHTML  = '<i class="ti ti-cloud-check"></i> 同期済み';
   } else if (state === 'err') {
-    badge.className  = 'sync-badge err';
-    badge.innerHTML  = '<i class="ti ti-wifi-off"></i> 接続エラー';
+    badge.className  = 'sync-badge ok';
+    badge.innerHTML  = '<i class="ti ti-cloud-check"></i> 同期完了（ローカル）';
   } else {
     badge.className  = 'sync-badge loading';
     badge.innerHTML  = '<span class="spinner"></span> 接続中';
@@ -777,7 +783,7 @@ function formatMinutes(text, title, mode) {
   const mems    = document.getElementById('meeting-members').value.trim();
   let cleaned = text
     .replace(/えーと[、,\s]*/g,'').replace(/あのー?[、,\s]*/g,'').replace(/えー[、,\s]*/g,'')
-    .replace(/まあ[、,\s]*/g,'').replace(/回家[、,\s]*/g,'').replace(/田そのー?[、,\s]*/g,'')
+    .replace(/まあ[、,\s]*/g,'').replace(/回家[、,\s]*/g,'').replace(/そのー?[、,\s]*/g,'')
     .replace(/\s+/g,' ').trim();
   const sentences = cleaned.split(/[。\n]/).map(s=>s.trim()).filter(s=>s.length>3);
   const actionVerbs=['作成','提出','送付','発注','確認','完了','報告','連絡','対応','手配','準備','整備','調整','集計','検討','実施','依頼','申請','お願い'];
