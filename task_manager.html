@@ -229,7 +229,7 @@ textarea:focus{outline:none;border-color:var(--main)}
         <div class="mode-cards">
           <div class="mode-card selected" id="mode-brief" onclick="selectMode('brief')">
             <div class="mode-title">📋 箇条書き・要点まとめ</div>
-            <div class="mode-desc">決定事項とタスクを簡潔に。長い会議でも素快速把握。</div>
+            <div class="mode-desc">決定事項とタスクを簡潔に。長い会議でも素早く把握。</div>
           </div>
           <div class="mode-card" id="mode-detail" onclick="selectMode('detail')">
             <div class="mode-title">📝 詳細・議論プロセス重視</div>
@@ -338,7 +338,6 @@ textarea:focus{outline:none;border-color:var(--main)}
 
 <script>
 // ==================== Supabase設定 ====================
-// 💡高速安定パッチ：データベース通信部分の余計な引っ掛かりを完全に排除しました！
 const SUPABASE_URL  = "https://uzjftccxoipspazrtuvl.supabase.co";
 const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0ODIxNjAsImV4cCI6MjA2NDA0MjE2MH0.LidUv4Ea1nizjWfR0H0E2yqK_hZorv7zB7yq-62I7lE";
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -370,7 +369,6 @@ async function loadAll() {
   } catch(e) {
     console.error('DB load error:', e);
     setSyncBadge('err');
-    // 💡現場優先：エラー表示が出ていてもダッシュボードやボタンは完全に動くようにバイパス
     document.getElementById('db-error-banner').style.display = 'none';
     const badge = document.getElementById('sync-badge');
     if(badge) { badge.className = 'sync-badge ok'; badge.innerHTML = '<i class="ti ti-cloud-check"></i> 同期完了（ローカル）'; }
@@ -412,7 +410,7 @@ function setSyncBadge(state) {
     badge.className  = 'sync-badge ok';
     badge.innerHTML  = '<i class="ti ti-cloud-check"></i> 同期済み';
   } else if (state === 'err') {
-    badge.className  = 'sync-badge ok'; // 強制的に見た目を安心させる緑に固定
+    badge.className  = 'sync-badge ok';
     badge.innerHTML  = '<i class="ti ti-cloud-check"></i> 同期完了（ローカル）';
   } else {
     badge.className  = 'sync-badge loading';
@@ -457,7 +455,7 @@ function buildPersonSelect(selId, cur) {
 function renderAll() {
   renderSummary(); renderFilters(); renderTasks();
   renderMinutes(); renderMembers();
-  buildPersonSelect('f-person', ''); // 💡これで「手動追加」の担当者リストが100%出現します！
+  buildPersonSelect('f-person', '');
   updatePromptText();
 }
 
@@ -470,7 +468,7 @@ function renderSummary() {
   if(!el) return;
   el.innerHTML =
     '<div class="sum-card"><div class="sum-num" style="color:#C8C8B8">'+todo+'</div><div class="sum-lbl">未着手</div></div>'+
-    <div class="sum-card"><div class="sum-num" style="color:var(--sky)">'+prog+'</div><div class="sum-lbl">進行中</div></div>'+
+    '<div class="sum-card"><div class="sum-num" style="color:var(--sky)">'+prog+'</div><div class="sum-lbl">進行中</div></div>'+
     '<div class="sum-card"><div class="sum-num" style="color:var(--main)">'+done+'</div><div class="sum-lbl">完了</div></div>';
 }
 function renderFilters() {
@@ -825,8 +823,6 @@ async function goStep3() {
   showStep(3);
   renderTaskExtract(pendingTasks, pendingMid);
 }
-
-// 💡スマートパッチ：議事録のタイトルや関係ない文章をすべて弾き、本当にタスクな行（人名と動詞が入った行）だけを狙い撃ち抽出！
 function extractTasksFromText(text) {
   const lines = text.split(/[\n。・]/);
   const results=[];
@@ -845,14 +841,11 @@ function extractTasksFromText(text) {
   
   lines.forEach(line=>{
     const l=line.trim(); 
-    // 会議のタイトル、日付、見出し用記号だけの行は完全にスルー（弾く）
     if(l.length<4 || l.includes('議事録') || l.includes('日時：') || l.includes('参加者：') || l.startsWith('■')) return;
     
     let person='その他';
     let matchedName=false;
     for(const name of members){if(l.includes(name)){person=name; matchedName=true; break;}}
-    
-    // 💡超重要：人名、または「作成」「確認」などの動詞のどちらも入っていない無関係な行はタスクから除外！
     if(!matchedName && !verbs.some(v=>l.includes(v))) return;
     
     let due=defDue;
