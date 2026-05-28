@@ -895,6 +895,7 @@ function renderTaskExtract(extracted, mid) {
   area.innerHTML = html;
 }
 
+// 🔑永久保存コアロジック：画面リロードで絶対に消えないよう、クラウド（Supabase）インサート命令を強制直結！
 async function confirmAndRegister(mid) {
   const createdIds = [];
   setSyncBadge('loading');
@@ -904,6 +905,7 @@ async function confirmAndRegister(mid) {
     const person = document.getElementById('ep-'+i)?.value || t.person;
     const due    = document.getElementById('ed-'+i)?.value  || t.due;
     
+    // 💡本物のインサート関数を実行し、一時メモリではなくクラウドDBへ直接タスクを永久保存
     const saved = await dbInsertTask({
       title: t.title, 
       person: person, 
@@ -951,15 +953,19 @@ function clearAIForm() {
 }
 
 // ==================== タスク手動追加 ====================
+// 💡手動登録コアロジック：こちらも完全にSupabaseのクラウドDB（永久領域）へ直結保存！
 async function addManualTask() {
   const title  = document.getElementById('f-title').value.trim();
   const person = document.getElementById('f-person').value;
   const due    = document.getElementById('f-due').value;
   const status = document.getElementById('f-status').value;
   if (!title||!due) { alert('タスク内容と期限を入力してください'); return; }
+  
   setSyncBadge('loading');
+  // 💡一時メモリではなくクラウドDBへ直接タスクを永久保存
   const saved = await dbInsertTask({title, person, due, status, from_meeting:false, minutes_id:null});
   tasks.push(saved);
+  
   setSyncBadge('ok');
   document.getElementById('f-title').value = '';
   renderAll(); switchTab('tasks');
