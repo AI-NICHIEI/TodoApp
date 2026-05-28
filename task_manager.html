@@ -203,7 +203,6 @@ textarea:focus{outline:none;border-color:var(--main)}
     <button class="tab" onclick="switchTab('add')"><i class="ti ti-plus"></i>追加</button>
   </div>
 
-  <!-- タスク一覧 -->
   <div id="tab-tasks" class="section">
     <div class="db-error-banner" id="db-error-banner">
       <i class="ti ti-wifi-off" style="font-size:20px"></i>
@@ -218,11 +217,9 @@ textarea:focus{outline:none;border-color:var(--main)}
     <div id="task-list-single"></div>
   </div>
 
-  <!-- AI議事録 3ステップ -->
   <div id="tab-ai" class="section" style="display:none">
     <div id="step-indicator" style="display:flex;align-items:center;margin-bottom:16px"></div>
 
-    <!-- STEP1 -->
     <div id="step1">
       <div class="card-box">
         <h3><i class="ti ti-microphone"></i> STEP 1　録音・文字起こしデータを貼り付け</h3>
@@ -246,7 +243,6 @@ textarea:focus{outline:none;border-color:var(--main)}
           </div>
         </div>
 
-        <!-- AIへの指示文 -->
         <div class="prompt-box">
           <div class="prompt-header">
             <div class="prompt-label"><i class="ti ti-copy"></i> AIへの指示文（ChatGPT等にコピーして使う）</div>
@@ -271,7 +267,6 @@ textarea:focus{outline:none;border-color:var(--main)}
       </div>
     </div>
 
-    <!-- STEP2 -->
     <div id="step2" style="display:none">
       <div class="card-box">
         <h3><i class="ti ti-file-check"></i> STEP 2　議事録を確認・編集</h3>
@@ -291,7 +286,6 @@ textarea:focus{outline:none;border-color:var(--main)}
       </div>
     </div>
 
-    <!-- STEP3 -->
     <div id="step3" style="display:none">
       <div class="card-box">
         <h3><i class="ti ti-list-check"></i> STEP 3　タスクを確認して登録</h3>
@@ -304,7 +298,6 @@ textarea:focus{outline:none;border-color:var(--main)}
     </div>
   </div>
 
-  <!-- 議事録一覧 -->
   <div id="tab-minutes" class="section" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <div style="font-size:16px;font-weight:700;color:var(--main-dark)"><i class="ti ti-notebook"></i> 過去の議事録</div>
@@ -313,7 +306,6 @@ textarea:focus{outline:none;border-color:var(--main)}
     <div class="two-col" id="minutes-list"></div>
   </div>
 
-  <!-- 担当者管理 -->
   <div id="tab-members" class="section" style="display:none">
     <div class="card-box">
       <h3><i class="ti ti-users"></i> 担当者一覧</h3>
@@ -328,7 +320,6 @@ textarea:focus{outline:none;border-color:var(--main)}
     </div>
   </div>
 
-  <!-- タスク追加 -->
   <div id="tab-add" class="section" style="display:none">
     <div style="max-width:560px;margin:0 auto">
       <div class="card-box">
@@ -493,8 +484,8 @@ function renderFilters() {
 function setFilter(p) { filterPerson = p; renderTasks(); }
 
 function taskCardHtml(t) {
-  const uc  = urgencyClass(t.due, t.status);
-  const dl  = daysLabel(t.due, t.status);
+  const uc   = urgencyClass(t.due, t.status);
+  const dl   = daysLabel(t.due, t.status);
   const mtg = t.minutes_id ? minutesList.find(m=>m.id===t.minutes_id) : null;
   const progressCls = (t.status==='progress' && !uc) ? 'in-progress-card' : '';
   return '<div class="task-card '+uc+' '+progressCls+'" onclick="openTask('+t.id+')">'+
@@ -522,7 +513,7 @@ function renderTasks() {
     });
     const done = visible.filter(t=>t.status==='done');
     if (done.length) {
-      rh += '<div class="status-group"><div class="status-label"><span class="status-dot dot-done"></span>完了（'+done.length+'件）</div>';
+      break_placeholder_rh_group = '<div class="status-group"><div class="status-label"><span class="status-dot dot-done"></span>完了（'+done.length+'件）</div>';
       done.forEach(t=>{rh+=taskCardHtml(t);}); rh+='</div>';
     }
     document.getElementById('task-list-left').innerHTML  = lh || '<div class="empty"><i class="ti ti-mood-smile"></i>タスクはありません</div>';
