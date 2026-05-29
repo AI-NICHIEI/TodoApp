@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>会議タスク管理 - 産廃・砕石</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.9.0/dist/tabler-icons.min.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -238,7 +238,7 @@ textarea:focus{outline:none;border-color:var(--main)}
           <textarea id="transcription-input" rows="8" placeholder="録音を文字起こしたテキストをここに貼り付けてください。
 
 【例】
-えーと、今月の産廃の搬出隔痕なんですけど、吉岡さんのほうで在庫の確認をお願いしたいんですが。はいわかりました今月末までにやります。あと奈美さん、取引先への見積書なんですけどできるだけ早くお願いできますか？はい3日以内に送ります..."></textarea>
+えーと、今月の産廃の搬出痕隔痕なんですけど、吉岡さんのほうで在庫の確認をお願いしたいんですが。はいわかりました今月末までにやります。あと奈美さん、取引先への見積書なんですけどできるだけ早くお願いできますか？はい3日以内に送ります..."></textarea>
         </div>
         <button class="big-btn btn-primary" onclick="goStep2()"><i class="ti ti-sparkles"></i> AIで議事録を作成 → STEP 2へ</button>
         <button class="big-btn btn-gray" onclick="skipToStep2()"><i class="ti ti-pencil"></i> 整形済みテキストをそのまま使う</button>
@@ -311,10 +311,10 @@ textarea:focus{outline:none;border-color:var(--main)}
 
 <script>
 // ============================================================
-// 🔑 本物のマスター設定：書き込み権限100%解放キー
+// 💡クロード推奨のanonキーを使い、ライブラリのバグを完全に回避する安定設定
 // ============================================================
 const SUPABASE_URL = "https://uzjftccxoipspazrtuvl.supabase.co";
-const SUPABASE_KEY = "sb_publishable_EtJx9KqlB3v7rtd5uIB0tg_U1mvC3e3wM_Z-62I7lE=";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0ODIxNjAsImV4cCI6MjA2NDA0MjE2MH0.LidUv4Ea1nizjWfR0H0E2yqK_hZorv7zB7yq-62I7lE";
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ============================================================
@@ -432,15 +432,6 @@ function setSyncBadge(state) {
   }
 }
 
-function showBanner(type, msg) {
-  const el = document.getElementById('db-banner');
-  if (!el) return;
-  if (!type || !msg) { el.style.display='none'; return; }
-  el.className = 'db-banner ' + type;
-  el.innerHTML = '<i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i><div>' + msg + '</div>';
-  el.style.display = 'flex';
-}
-
 // ============================================================
 // ユーティリティ
 // ============================================================
@@ -474,6 +465,15 @@ function buildPersonSelect(selId, cur) {
   sel.innerHTML = members.map(m =>
     '<option value="'+m+'"'+(m===cur?' selected':'')+'>'+m+'</option>'
   ).join('') + '<option value="その他"'+(cur==='その他'?' selected':'')+'>その他</option>';
+}
+
+function showBanner(type, msg) {
+  const el = document.getElementById('db-banner');
+  if (!el) return;
+  if (!type || !msg) { el.style.display='none'; return; }
+  el.className = 'db-banner ' + type;
+  el.innerHTML = '<i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i><div>' + msg + '</div>';
+  el.style.display = 'flex';
 }
 
 function renderAll() {
@@ -511,7 +511,7 @@ function taskCardHtml(t) {
   const pc   = (t.status==='progress' && !uc) ? 'in-progress-card' : '';
   return '<div class="task-card '+uc+' '+pc+'" onclick="openTask('+t.id+')">'+
     '<div class="task-top"><div class="task-title">'+escHtml(t.title)+'</div>'+
-    '<span class="days-badge '+dl.cls+'">'+dl.txt+'</span></div>'+
+    <span class="days-badge '+dl.cls+'">'+dl.txt+'</span></div>'+
     '<div class="task-meta">'+
     '<span class="meta-chip"><div class="avatar">'+initials(t.person)+'</div>'+escHtml(t.person)+'</span>'+
     '<span class="meta-chip"><i class="ti ti-calendar"></i>'+(t.due||'未設定')+'</span>'+
@@ -815,7 +815,7 @@ function formatMinutes(text,title,mode) {
     .replace(/えーと[、,\s]*/g,'').replace(/あのー?[、,\s]*/g,'').replace(/えー[、,\s]*/g,'')
     .replace(/まあ[、,\s]*/g,'').replace(/そのー?[、,\s]*/g,'').replace(/\s+/g,' ').trim();
   const sentences=cleaned.split(/[。\n]/).map(s=>s.trim()).filter(s=>s.length>3);
-  const av=['作成','提出','送付','発注','確認','完了','報告','連絡','対応','手配','準備','整備','調整','集計','実施','依頼','申請','お願い'];
+  const av=['作成','提出','送付','発注','確認','完了','報告','連絡','対応','手配','準備','整備','調整','集計','検討','実施','依頼','申請','お願い'];
   const ts=sentences.filter(s=>av.some(v=>s.includes(v)));
   const os=sentences.filter(s=>!av.some(v=>s.includes(v)));
   let r='【'+title+'】議事録\n';
@@ -907,7 +907,7 @@ function renderTaskExtract(extracted, mid) {
       '<button class="big-btn btn-primary" onclick="switchTab(\'add\')"><i class="ti ti-plus"></i> 手動でタスクを追加</button>';
     return;
   }
-  let html='<div style="font-size:13px;color:#888;margin-bottom:10px"><i class="ti ti-sparkles"></i> 綺麗なタスクだけを '+extracted.length+'件 抽出しました。確認・編集してください。</div>';
+  let html='<div style="font-size:13px;color:#888;margin-bottom:10px"><i class="ti ti-sparkles"></i> '+extracted.length+'件のタスクを検出。担当者・期限を確認してください。</div>';
   extracted.forEach((t,i)=>{
     const opts=members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('')
       +'<option value="その他"'+(t.person==='other'||t.person==='その他'?' selected':'')+'>その他</option>';
