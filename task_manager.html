@@ -858,63 +858,123 @@ async function goStep3() {
 }
 
 function extractTasksFromText(text) {
-  const results=[];
-  const defDue=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
-  const duePats=[
-    {r:/(\d+)月(\d+)日/,fn:function(m){var y=new Date().getFullYear();return new Date(y,parseInt(m[1])-1,parseInt(m[2])).toISOString().split('T')[0];}},
-    {r:/今月末/,fn:function(){var d=new Date();d.setMonth(d.getMonth()+1,0);return d.toISOString().split('T')[0];}},
-    {r:/(\d+)日以内/,fn:function(m){return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];}},
-    {r:/(\d+)日後/,fn:function(m){return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];}},
-    {r:/来週/,fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
-    {r:/今週中|今週末/,fn:function(){return new Date(Date.now()+5*86400000).toISOString().split('T')[0];}},
-    {r:/明日/,fn:function(){return new Date(Date.now()+86400000).toISOString().split('T')[0];}},
-    {r:/今日|即日/,fn:function(){return today();}},
+  const results = [];
+  const defDue = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+
+  // 期限パターン
+  const duePats = [
+    {r:/(\d+)月(\d+)日/,    fn:function(m){var y=new Date().getFullYear();return new Date(y,parseInt(m[1])-1,parseInt(m[2])).toISOString().split('T')[0];}},
+    {r:/今月末/,             fn:function(){var d=new Date();d.setMonth(d.getMonth()+1,0);return d.toISOString().split('T')[0];}},
+    {r:/来週/,               fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
+    {r:/今週中|今週末/,      fn:function(){return new Date(Date.now()+5*86400000).toISOString().split('T')[0];}},
+    {r:/翌日/,               fn:function(){return new Date(Date.now()+1*86400000).toISOString().split('T')[0];}},
+    {r:/即日|即日開始|即時/, fn:function(){return today();}},
+    {r:/明日/,               fn:function(){return new Date(Date.now()+86400000).toISOString().split('T')[0];}},
+    {r:/今日/,               fn:function(){return today();}},
+    {r:/(\d+)日以内/,        fn:function(m){return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];}},
+    {r:/(\d+)日後/,          fn:function(m){return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];}},
+    {r:/次回会議/,           fn:function(){return new Date(Date.now()+14*86400000).toISOString().split('T')[0];}},
+    {r:/継続/,               fn:function(){return new Date(Date.now()+30*86400000).toISOString().split('T')[0];}},
+    {r:/毎週/,               fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
   ];
-  var taskVerbs=['作成','提出','送付','発注','確認','報告','連絡','対応','手配','準備','整備','調整','集計','実施','依頼','申請','共有','整理','強化','推進','開始','行う','お願い','担当','進める','まとめ','する'];
-  var skipTests=[
-    function(s){return /^【/.test(s);},function(s){return /^■/.test(s);},
-    function(s){return /^日時[：:]/.test(s);},function(s){return /^参加者[：:]/.test(s);},
-    function(s){return /^会議名/.test(s);},function(s){return /^議事録/.test(s);},
-    function(s){return /^アクションアイテム/.test(s);},function(s){return /^決定事項/.test(s);},
-    function(s){return /^その他議題/.test(s);},function(s){return /^議事内容/.test(s);},
-  ];
-  var sentences=[];
-  text.split('\n').forEach(function(line){
-    line.split('。').forEach(function(s){var t=s.trim();if(t.length>3&&t.length<200)sentences.push(t);});
-  });
-  sentences.forEach(function(sentence){
-    for(var si=0;si<skipTests.length;si++){if(skipTests[si](sentence))return;}
-    if(sentence.length>80){
-      var colonRe=/([^\s、，]{1,6})[：:]\s*([^、，。]{5,40})/g,cm;
-      while((cm=colonRe.exec(sentence))!==null){
-        var cName=cm[1],cTask=cm[2].trim(),cPerson='その他';
-        for(var ni=0;ni<members.length;ni++){if(cName.indexOf(members[ni])!==-1){cPerson=members[ni];break;}}
-        var hv=false;for(var vi=0;vi<taskVerbs.length;vi++){if(cTask.indexOf(taskVerbs[vi])!==-1){hv=true;break;}}
-        if(!hv&&cPerson==='その他')continue;
-        var cDue=defDue;
-        for(var pi=0;pi<duePats.length;pi++){var dm=sentence.match(duePats[pi].r);if(dm){try{cDue=duePats[pi].fn(dm);}catch(e){}break;}}
-        var cTitle=cTask.replace(/[。！!？?]$/,'').trim();
-        if(cTitle.length>=4&&cTitle.length<=60)results.push({title:cTitle,person:cPerson,due:cDue});
+
+  function getDue(line) {
+    for(var pi=0;pi<duePats.length;pi++){
+      var dm=line.match(duePats[pi].r);
+      if(dm){try{return duePats[pi].fn(dm);}catch(e){}}
+    }
+    return defDue;
+  }
+
+  // 「担当者名：タスク内容（期限）」形式を最優先で処理
+  // 例：「北浦：首都圏見込み案件訪問および進捗報告（来週）」
+  var lines = text.split('\n');
+  
+  lines.forEach(function(line) {
+    var l = line.trim();
+    if (!l || l.length < 4) return;
+    
+    // 箇条書き記号を除去
+    l = l.replace(/^[・\-\*\s\d\.\)]+/, '').trim();
+    if (!l) return;
+
+    // パターン1: 「担当者：タスク（期限）」または「担当者・担当者：タスク（期限）」
+    var colonMatch = l.match(/^([^\s：:、]{1,10}(?:[・&][^\s：:、]{1,10})*)\s*[：:]\s*(.+)/);
+    if (colonMatch) {
+      var namesPart = colonMatch[1];
+      var taskPart  = colonMatch[2].trim();
+      
+      // 名前部分から担当者を探す
+      var foundPersons = [];
+      members.forEach(function(name) {
+        if (namesPart.includes(name)) foundPersons.push(name);
+      });
+      
+      // タスク内容が短すぎたり、セクションタイトルっぽいものはスキップ
+      if (taskPart.length < 4) return;
+      var skipWords = ['確認','概要','状況','結果','一覧','リスト','関連','対策','管理','強化','販促','営業'];
+      // セクション見出し（短くてタスク動詞がない）はスキップしない
+      
+      // 期限を抽出（括弧内から優先）
+      var due = defDue;
+      var bracketMatch = taskPart.match(/[（(]([^）)]+)[）)]/);
+      if (bracketMatch) {
+        due = getDue(bracketMatch[1]);
+        // 括弧内の期限表記を除去してタスク内容を整形
+        taskPart = taskPart.replace(/[（(][^）)]+[）)]/g, '').trim();
+      } else {
+        due = getDue(l);
+      }
+      
+      taskPart = taskPart.replace(/[。、！!？?]$/, '').trim();
+      if (taskPart.length < 4 || taskPart.length > 80) return;
+      
+      if (foundPersons.length > 0) {
+        // 複数担当者は個別に登録
+        foundPersons.forEach(function(p) {
+          results.push({title: taskPart, person: p, due: due});
+        });
+      } else {
+        // 担当者不明でもタスクとして登録
+        results.push({title: taskPart, person: 'その他', due: due});
       }
       return;
     }
-    var hasMember=false,person='その他';
-    for(var ni=0;ni<members.length;ni++){if(sentence.indexOf(members[ni])!==-1){person=members[ni];hasMember=true;break;}}
-    var hasVerb=false;for(var vi=0;vi<taskVerbs.length;vi++){if(sentence.indexOf(taskVerbs[vi])!==-1){hasVerb=true;break;}}
-    if(!hasMember&&!hasVerb)return;
-    var due=defDue;
-    for(var pi=0;pi<duePats.length;pi++){var dm=sentence.match(duePats[pi].r);if(dm){try{due=duePats[pi].fn(dm);}catch(e){}break;}}
-    var title=sentence.replace(/^[\s\u30FB\-\*\u3010\u3011\u25A0\u25CF\u25CE\d\)\uff01\u30FB\u00B7]+/,'').replace(/[。！!？?]$/,'').trim();
-    for(var ni=0;ni<members.length;ni++){title=title.replace(new RegExp('^'+members[ni]+'[さん]?[：:がはもを]\\s*'),'');}
-    title=title.replace(/^(また|なお|さらに|ただし)[、,\s]*/,'');
-    if(title.length<4||title.length>65)return;
-    if(/^[\d\s、，。\u30FB\-]+$/.test(title))return;
-    results.push({title:title,person:person,due:due});
-  });
-  var seen={};
-  return results.filter(function(t){var k=t.title.slice(0,20);if(seen[k])return false;seen[k]=true;return true;});
-}
 
+    // パターン2: 担当者名が文中に含まれ、アクション動詞がある文
+    var taskVerbs = ['作成','提出','送付','発注','確認','報告','連絡','対応','手配','準備',
+      '整備','調整','集計','実施','依頼','申請','共有','整理','強化','推進','開始',
+      '行う','お願い','担当','進める','まとめ','訪問','導入','検討','整備','記録',
+      '洗い出し','告知','運用','管理','増加','復旧','優先'];
+    
+    var hasMember = false, person = 'その他';
+    members.forEach(function(name) {
+      if (l.includes(name) && !hasMember) { person = name; hasMember = true; }
+    });
+    var hasVerb = taskVerbs.some(function(v){return l.includes(v);});
+    if (!hasMember && !hasVerb) return;
+
+    // ヘッダー行スキップ
+    var skipHeaders = ['概要','確認事項','決定事項','課題','アクション','次回','コメント',
+      '会議名','参加者','状況','現状','売上','首都圏','コンテナ','砕石','管理面'];
+    if (skipHeaders.some(function(s){return l.startsWith(s);})) return;
+    if (/^\d+\.\s/.test(l)) return; // 「1. 」「2. 」で始まる行
+
+    var due = getDue(l);
+    var title = l.replace(/[。、！!？?]$/, '').trim();
+    if (title.length < 4 || title.length > 80) return;
+
+    results.push({title: title, person: person, due: due});
+  });
+
+  // 重複除去（タイトル先頭25文字で比較）
+  var seen = {};
+  return results.filter(function(t) {
+    var key = t.title.slice(0, 25);
+    if (seen[key]) return false;
+    seen[key] = true; return true;
+  });
+}
 function renderTaskExtract(extracted, mid) {
   const area=document.getElementById('task-extract-area'); if(!area) return;
   if (!extracted.length) {
