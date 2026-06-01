@@ -861,7 +861,6 @@ function extractTasksFromText(text) {
   const results = [];
   const defDue = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
 
-  // 期限パターン
   const duePats = [
     {r:/(\d+)月(\d+)日/,    fn:function(m){var y=new Date().getFullYear();return new Date(y,parseInt(m[1])-1,parseInt(m[2])).toISOString().split('T')[0];}},
     {r:/今月末/,             fn:function(){var d=new Date();d.setMonth(d.getMonth()+1,0);return d.toISOString().split('T')[0];}},
@@ -886,88 +885,81 @@ function extractTasksFromText(text) {
     return defDue;
   }
 
-  // 「担当者名：タスク内容（期限）」形式を最優先で処理
-  // 例：「北浦：首都圏見込み案件訪問および進捗報告（来週）」
   var lines = text.split('\n');
-  
+
   lines.forEach(function(line) {
     var l = line.trim();
     if (!l || l.length < 4) return;
-    
-    // 箇条書き記号を除去
-    l = l.replace(/^[・\-\*\s\d\.\)]+/, '').trim();
-    if (!l) return;
 
-    // パターン1: 「担当者：タスク（期限）」または「担当者・担当者：タスク（期限）」
-    var colonMatch = l.match(/^([^\s：:、]{1,10}(?:[・&][^\s：:、]{1,10})*)\s*[：:]\s*(.+)/);
+    // 箇条書き記号・番号を除去
+    l = l.replace(/^[・\-\*\s\d\.\)、]+/, '').trim();
+    if (!l || l.length < 4) return;
+
+    // 完全にスキップする行（セクション見出しのみ）
+    var skipExact = ['会議名','参加者','日時','場所','議事録','概要','確認事項','次回会議確認事項','管理者コメント'];
+    if (skipExact.some(function(s){ return l === s || l.startsWith(s + '：') || l.startsWith(s + ':'); })) return;
+    // 「1. 会議概要」のような番号付きセクション見出し
+    if (/^\d+\.\s*(会議|現状|決定|課題|アクション|次回|管理者)/.test(l)) return;
+
+    // パターン1: 「担当者：タスク（期限）」形式を最優先
+    var colonMatch = l.match(/^([^\s：:、]{1,12}(?:[・&・][^\s：:、]{1,12})*)\s*[：:]\s*(.+)/);
     if (colonMatch) {
       var namesPart = colonMatch[1];
       var taskPart  = colonMatch[2].trim();
-      
-      // 名前部分から担当者を探す
+      if (taskPart.length < 4) return;
+
+      // 担当者を探す
       var foundPersons = [];
       members.forEach(function(name) {
         if (namesPart.includes(name)) foundPersons.push(name);
       });
-      
-      // タスク内容が短すぎたり、セクションタイトルっぽいものはスキップ
-      if (taskPart.length < 4) return;
-      var skipWords = ['確認','概要','状況','結果','一覧','リスト','関連','対策','管理','強化','販促','営業'];
-      // セクション見出し（短くてタスク動詞がない）はスキップしない
-      
-      // 期限を抽出（括弧内から優先）
+
+      // 期限を括弧内から優先取得
       var due = defDue;
       var bracketMatch = taskPart.match(/[（(]([^）)]+)[）)]/);
       if (bracketMatch) {
         due = getDue(bracketMatch[1]);
-        // 括弧内の期限表記を除去してタスク内容を整形
         taskPart = taskPart.replace(/[（(][^）)]+[）)]/g, '').trim();
       } else {
         due = getDue(l);
       }
-      
       taskPart = taskPart.replace(/[。、！!？?]$/, '').trim();
       if (taskPart.length < 4 || taskPart.length > 80) return;
-      
+
       if (foundPersons.length > 0) {
-        // 複数担当者は個別に登録
         foundPersons.forEach(function(p) {
           results.push({title: taskPart, person: p, due: due});
         });
       } else {
-        // 担当者不明でもタスクとして登録
-        results.push({title: taskPart, person: 'その他', due: due});
+        // 担当者名がなくてもタスクっぽければ登録
+        var taskVerbs2 = ['作成','提出','送付','発注','確認','報告','連絡','対応','手配','準備',
+          '整備','調整','実施','依頼','申請','共有','整理','強化','推進','開始','訪問',
+          '導入','検討','記録','洗い出し','告知','運用','管理','増加','復旧'];
+        if (taskVerbs2.some(function(v){return taskPart.includes(v);})) {
+          results.push({title: taskPart, person: 'その他', due: due});
+        }
       }
       return;
     }
 
-    // パターン2: 担当者名が文中に含まれ、アクション動詞がある文
+    // パターン2: 担当者名＋アクション動詞がある文
     var taskVerbs = ['作成','提出','送付','発注','確認','報告','連絡','対応','手配','準備',
-      '整備','調整','集計','実施','依頼','申請','共有','整理','強化','推進','開始',
-      '行う','お願い','担当','進める','まとめ','訪問','導入','検討','整備','記録',
-      '洗い出し','告知','運用','管理','増加','復旧','優先'];
-    
+      '整備','調整','実施','依頼','申請','共有','整理','強化','推進','開始','訪問',
+      '導入','検討','記録','洗い出し','告知','運用','管理','増加','復旧','優先'];
     var hasMember = false, person = 'その他';
     members.forEach(function(name) {
       if (l.includes(name) && !hasMember) { person = name; hasMember = true; }
     });
     var hasVerb = taskVerbs.some(function(v){return l.includes(v);});
-    if (!hasMember && !hasVerb) return;
-
-    // ヘッダー行スキップ
-    var skipHeaders = ['概要','確認事項','決定事項','課題','アクション','次回','コメント',
-      '会議名','参加者','状況','現状','売上','首都圏','コンテナ','砕石','管理面'];
-    if (skipHeaders.some(function(s){return l.startsWith(s);})) return;
-    if (/^\d+\.\s/.test(l)) return; // 「1. 」「2. 」で始まる行
+    if (!hasMember || !hasVerb) return;
 
     var due = getDue(l);
     var title = l.replace(/[。、！!？?]$/, '').trim();
     if (title.length < 4 || title.length > 80) return;
-
     results.push({title: title, person: person, due: due});
   });
 
-  // 重複除去（タイトル先頭25文字で比較）
+  // 重複除去
   var seen = {};
   return results.filter(function(t) {
     var key = t.title.slice(0, 25);
