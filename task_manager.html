@@ -573,8 +573,10 @@ function openTask(id) {
   document.getElementById('modal-area').innerHTML =
     '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:8px">'+
-    '<h3 style="margin-bottom:0;color:#333;font-size:15px;line-height:1.4">'+escHtml(t.title)+'</h3>'+
+    '<h3 style="margin-bottom:0;color:#333;font-size:15px;line-height:1.4">タスク詳細</h3>'+
     '<button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1;flex-shrink:0">&times;</button></div>'+
+    '<div class="info-card"><div class="info-label">タスク内容</div>'+
+    '<textarea id="task-edit-title" style="width:100%;padding:9px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:14px;font-family:inherit;margin-top:4px;min-height:70px;resize:vertical">'+escHtml(t.title)+'</textarea></div>'+
     '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">'+
     '<div class="info-card"><div class="info-label">担当者</div>'+
     '<select id="task-edit-person" style="width:100%;padding:9px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit;margin-top:4px">'+po+'</select></div>'+
@@ -595,12 +597,14 @@ function openTask(id) {
     '</div></div>';
 }
 async function saveTaskEdit(id) {
+  const title  = document.getElementById('task-edit-title').value.trim();
   const person = document.getElementById('task-edit-person').value;
   const due    = document.getElementById('task-edit-due').value;
+  if (!title) { alert('タスク内容を入力してください'); return; }
   try {
-    await dbUpdateTask(id, {person, due: due||null});
+    await dbUpdateTask(id, {title, person, due: due||null});
     const idx = tasks.findIndex(t=>t.id===id);
-    if (idx>-1) { tasks[idx].person=person; tasks[idx].due=due; }
+    if (idx>-1) { tasks[idx].title=title; tasks[idx].person=person; tasks[idx].due=due; }
     renderAll(); closeModal();
   } catch(e) { alert('保存エラー: '+e.message); }
 }
