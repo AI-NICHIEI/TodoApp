@@ -405,6 +405,11 @@ async function dbInsertMinutes(m) {
   return data[0];
 }
 
+async function dbUpdateMinutesBody(id, fields) {
+  const {error} = await db.from('minutes_list').update(fields).eq('id', id);
+  if (error) throw new Error('UPDATE minutes: ' + error.message);
+}
+
 async function dbUpdateMinutesTaskIds(id, ids) {
   const {error} = await db.from('minutes_list')
     .update({task_ids: JSON.stringify(ids)})
@@ -681,10 +686,51 @@ function openMinutesDetail(id) {
     '</div>'+th+
     '<div class="info-label" style="margin-bottom:6px">議事録</div>'+
     '<div class="minutes-body">'+escHtml(m.body)+'</div>'+
+    '<button class="big-btn btn-sky" onclick="editMinutesDetail('+id+')"><i class="ti ti-pencil"></i>議事録を編集</button>'+
     '<button class="big-btn btn-danger" onclick="deleteMinutesItem('+id+')"><i class="ti ti-trash"></i>この議事録を削除</button>'+
     '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i>閉じる</button>'+
     '</div></div>';
 }
+function editMinutesDetail(id) {
+  const m = minutesList.find(x=>x.id===id); if(!m) return;
+  document.getElementById('modal-area').innerHTML =
+    '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:8px">'+
+    '<h3 style="margin-bottom:0;font-size:16px;color:var(--main-dark)"><i class="ti ti-pencil"></i> 議事録を編集</h3>'+
+    '<button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1">&times;</button></div>'+
+    '<div class="form-row"><label>会議タイトル</label>'+
+    '<input id="edit-min-title" type="text" value="'+escHtml(m.title)+'" style="width:100%;padding:11px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit"></div>'+
+    '<div class="form-row"><label>会議日</label>'+
+    '<input id="edit-min-date" type="date" value="'+(m.date||'')+'" style="width:100%;padding:11px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit"></div>'+
+    '<div class="form-row"><label>参加者</label>'+
+    '<input id="edit-min-members" type="text" value="'+escHtml(m.members||'')+'" style="width:100%;padding:11px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit"></div>'+
+    '<div class="form-row"><label>議事録・メモ</label>'+
+    '<textarea id="edit-min-body" style="width:100%;padding:11px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;font-size:13px;font-family:inherit;min-height:200px;resize:vertical;line-height:1.7">'+escHtml(m.body||'')+'</textarea></div>'+
+    '<button class="big-btn btn-primary" onclick="saveMinutesEdit('+id+')"><i class="ti ti-device-floppy"></i> 保存する</button>'+
+    '<button class="big-btn btn-gray" onclick="openMinutesDetail('+id+')"><i class="ti ti-arrow-left"></i> キャンセル</button>'+
+    '</div></div>';
+}
+
+async function saveMinutesEdit(id) {
+  const title   = document.getElementById('edit-min-title').value.trim();
+  const date    = document.getElementById('edit-min-date').value;
+  const members_val = document.getElementById('edit-min-members').value.trim();
+  const body    = document.getElementById('edit-min-body').value.trim();
+  if (!title) { alert('タイトルを入力してください'); return; }
+  try {
+    await dbUpdateMinutesBody(id, {title, date: date||null, members: members_val, body});
+    const idx = minutesList.findIndex(m=>m.id===id);
+    if (idx>-1) {
+      minutesList[idx].title   = title;
+      minutesList[idx].date    = date;
+      minutesList[idx].members = members_val;
+      minutesList[idx].body    = body;
+    }
+    renderAll();
+    openMinutesDetail(id);
+  } catch(e) { alert('保存エラー: '+e.message); }
+}
+
 async function deleteMinutesItem(id) {
   if (!confirm('この議事録を削除しますか？\n（関連タスクは残ります）')) return;
   try {
