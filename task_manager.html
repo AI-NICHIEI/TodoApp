@@ -195,11 +195,6 @@ textarea:focus{outline:none;border-color:var(--main)}
   <div id="tab-tasks" class="section">
     <div id="db-banner" class="db-banner" style="display:none"></div>
     <div class="summary-row" id="summary"></div>
-    <div style="margin-bottom:12px">
-      <button id="alert-btn" onclick="sendAlertNow()" style="width:100%;padding:12px;border-radius:12px;border:2px solid #89CFEE;background:#D6F0FF;color:#1A6E9A;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-        🔔 今すぐGoogle Chatに通知
-      </button>
-    </div>
     <div class="filter-row" id="filter-row"></div>
     <div class="two-col">
       <div id="task-list-left"></div>
@@ -320,7 +315,7 @@ textarea:focus{outline:none;border-color:var(--main)}
 // ============================================================
 const SUPABASE_URL = "https://uzjftccxoipspazrtuvl.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4NjQ1NTYsImV4cCI6MjA5NTQ0MDU1Nn0.qsXWRTk2hwK4JtIBoNuq-8OXPJYb3-Q4BPugBg2tzd8";
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+const db = (window.supabase || window.Supabase || supabase).createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false }
 });
 
@@ -359,8 +354,6 @@ async function loadAll() {
     dbOk = true;
     setSyncBadge('ok');
     renderAll();
-    // 起動時に期限チェックを実行
-    setTimeout(checkOverdueTasks, 2000);
   } catch(e) {
     console.error('loadAll error:', e);
     dbOk = false;
@@ -532,7 +525,6 @@ function taskCardHtml(t) {
     '<span class="meta-chip"><i class="ti ti-calendar"></i>'+(t.due||'未設定')+'</span>'+
     (mtg?'<span class="meeting-badge" onclick="event.stopPropagation();openMinutesDetail('+mtg.id+')"><i class="ti ti-notebook"></i>'+escHtml(mtg.title)+'</span>':'')+
     (t.from_meeting&&!t.minutes_id?'<span class="meeting-badge"><i class="ti ti-sparkles"></i>AI抽出</span>':'')+
-    (t.comment&&t.status==='done'?'<div style="margin-top:7px;font-size:12px;color:#666;background:var(--main-light);border-radius:8px;padding:5px 9px;line-height:1.5"><i class="ti ti-notes" style="font-size:13px"></i> '+escHtml(t.comment)+'</div>':'')+
     '</div></div>';
 }
 
@@ -599,8 +591,6 @@ function openTask(id) {
     '<div class="info-val" style="display:flex;align-items:center;gap:5px;margin-top:4px">'+
     '<span class="status-dot '+statusDot(t.status)+'"></span>'+statusLabel(t.status)+
     '<span class="days-badge '+dl.cls+'" style="margin-left:8px">'+dl.txt+'</span></div></div>'+
-    '<div class="info-card"><div class="info-label">完了メモ・対応内容</div>'+
-    '<textarea id="task-edit-comment" placeholder="例：5/30に先方と電話で合意、契約書送付済み" style="width:100%;padding:9px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:13px;font-family:inherit;margin-top:4px;min-height:70px;resize:vertical;line-height:1.65">'+escHtml(t.comment||'')+'</textarea></div>'+
     (mtg?'<div class="info-card" style="cursor:pointer" onclick="closeModal();openMinutesDetail('+mtg.id+')">'+
     '<div class="info-label">出典議事録</div>'+
     '<div class="info-val" style="color:var(--main-dark);margin-top:4px"><i class="ti ti-notebook"></i> '+escHtml(mtg.title)+'（'+fmtDate(mtg.date)+'）</div></div>':'')+
@@ -612,31 +602,22 @@ function openTask(id) {
     '</div></div>';
 }
 async function saveTaskEdit(id) {
-  const title   = document.getElementById('task-edit-title').value.trim();
-  const person  = document.getElementById('task-edit-person').value;
-  const due     = document.getElementById('task-edit-due').value;
-  const comment = document.getElementById('task-edit-comment').value.trim();
+  const title  = document.getElementById('task-edit-title').value.trim();
+  const person = document.getElementById('task-edit-person').value;
+  const due    = document.getElementById('task-edit-due').value;
   if (!title) { alert('タスク内容を入力してください'); return; }
   try {
-    await dbUpdateTask(id, {title, person, due: due||null, comment: comment||null});
+    await dbUpdateTask(id, {title, person, due: due||null});
     const idx = tasks.findIndex(t=>t.id===id);
-    if (idx>-1) { tasks[idx].title=title; tasks[idx].person=person; tasks[idx].due=due; tasks[idx].comment=comment; }
+    if (idx>-1) { tasks[idx].title=title; tasks[idx].person=person; tasks[idx].due=due; }
     renderAll(); closeModal();
   } catch(e) { alert('保存エラー: '+e.message); }
 }
 async function changeStatus(id, s) {
   try {
-    const comment = document.getElementById('task-edit-comment')?.value.trim() || null;
-    const fields = {status: s};
-    if (comment) fields.comment = comment;
-    if (s === 'done') fields.completed_at = new Date().toISOString();
-    await dbUpdateTask(id, fields);
+    await dbUpdateTask(id, {status: s});
     const idx = tasks.findIndex(t=>t.id===id);
-    if (idx>-1) {
-      tasks[idx].status = s;
-      if (comment) tasks[idx].comment = comment;
-      if (s === 'done') tasks[idx].completed_at = new Date().toISOString();
-    }
+    if (idx>-1) tasks[idx].status = s;
     renderAll(); closeModal();
   } catch(e) { alert('更新エラー: '+e.message); }
 }
@@ -1221,86 +1202,6 @@ function switchTab(tab) {
   if(tab==='minutes') renderMinutes();
   if(tab==='members') renderMembers();
   if(tab==='ai')      showStep(1);
-}
-
-// ============================================================
-// Google Chat 通知
-// ============================================================
-const GCHAT_WEBHOOK = "https://chat.googleapis.com/v1/spaces/AAQALQCFzhI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=Hzk37c9qcN4bJNatPW097_LnvZj9gku3h2vMzK4B7ro";
-
-async function sendGChatAlert(messageText) {
-  try {
-    await fetch(GCHAT_WEBHOOK, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({text: messageText})
-    });
-  } catch(e) {
-    console.error('Google Chat通知エラー:', e);
-  }
-}
-
-async function checkOverdueTasks() {
-  // 期限超過タスク（未完了）を抽出
-  const overdue = tasks.filter(t => {
-    if (t.status === 'done') return false;
-    if (!t.due) return false;
-    return daysLeft(t.due) < 0;
-  });
-
-  // 残り1〜2日のタスク（警告）
-  const warning = tasks.filter(t => {
-    if (t.status === 'done') return false;
-    if (!t.due) return false;
-    const d = daysLeft(t.due);
-    return d >= 0 && d <= 2;
-  });
-
-  if (overdue.length === 0 && warning.length === 0) return;
-
-  let msg = '🚨 *会議タスク管理 アラート*
-';
-  msg += '━━━━━━━━━━━━━━━━━━
-';
-
-  if (overdue.length > 0) {
-    msg += '
-🔴 *期限超過タスク（' + overdue.length + '件）*
-';
-    overdue.forEach(t => {
-      const over = Math.abs(daysLeft(t.due));
-      msg += '・' + t.person + '：' + t.title + '（' + over + '日超過）
-';
-    });
-  }
-
-  if (warning.length > 0) {
-    msg += '
-⚠️ *期限間近タスク（' + warning.length + '件）*
-';
-    warning.forEach(t => {
-      const d = daysLeft(t.due);
-      const label = d === 0 ? '今日締切' : '残' + d + '日';
-      msg += '・' + t.person + '：' + t.title + '（' + label + '）
-';
-    });
-  }
-
-  msg += '
-━━━━━━━━━━━━━━━━━━
-';
-  msg += '📋 確認はこちら → https://ai-nichiei.github.io/TodoApp/task_manager.html';
-
-  await sendGChatAlert(msg);
-}
-
-// 手動でアラートを送るボタン用
-async function sendAlertNow() {
-  const btn = document.getElementById('alert-btn');
-  if(btn) { btn.disabled=true; btn.textContent='送信中...'; }
-  await checkOverdueTasks();
-  if(btn) { btn.disabled=false; btn.textContent='🔔 今すぐGoogle Chatに通知'; }
-  alert('Google Chatにアラートを送信しました！');
 }
 
 // ============================================================
