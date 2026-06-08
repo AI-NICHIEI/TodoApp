@@ -73,6 +73,7 @@ textarea:focus{outline:none;border-color:var(--main)}
 .info-card{background:#FAFEF4;border-radius:10px;border:2px solid var(--border);padding:11px;margin-bottom:8px}
 .info-label{font-size:11px;color:#999;margin-bottom:2px;font-weight:700}
 .info-val{font-size:14px;font-weight:600;color:#333}
+.report-history-box{background:#F9FBF6;border:1.5px solid var(--border);border-radius:8px;padding:10px;max-height:120px;overflow-y:auto;font-size:12px;color:#555;line-height:1.6;white-space:pre-wrap;margin-top:4px}
 .form-row{margin-bottom:11px}
 .form-row label{font-size:13px;color:#666;display:block;margin-bottom:5px;font-weight:700}
 .form-row input,.form-row select,.form-row textarea{width:100%;padding:12px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;color:#333;font-size:15px;font-family:inherit}
@@ -133,7 +134,7 @@ textarea:focus{outline:none;border-color:var(--main)}
 .add-member-box h4{font-size:14px;font-weight:700;color:var(--main-dark);margin-bottom:10px;display:flex;align-items:center;gap:6px}
 .inline-input-row{display:flex;gap:8px;align-items:center}
 .inline-input-row input{flex:1;padding:11px 14px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;color:#333;font-size:15px;font-family:inherit}
-.inline-input-row button{padding:11px 16px;border-radius:10px;border:none;background:linear-gradient(120deg,var(--main),#9DD44A);color:#fff;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
+.inline-input-row button{padding:11px 16px;border-radius:10px;border:none;background:linear-gradient(120deg,var(--main),var(--main-mid));color:#fff;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
 .db-banner{border-radius:12px;padding:12px 16px;margin-bottom:12px;font-size:13px;display:flex;align-items:center;gap:8px}
 .db-banner.err{background:#FFE8E8;border:2px solid #FFBBBB;color:#C02020}
 .db-banner.warn{background:var(--amber-light);border:2px solid #FFD98A;color:#8B5500}
@@ -319,9 +320,6 @@ const db = (window.supabase || window.Supabase || supabase).createClient(SUPABAS
   auth: { persistSession: false }
 });
 
-// 💡【Google Chat連携】ご提示いただいた本物のWebhook URLを完璧に直結させました！
-const GOOGLE_CHAT_WEBHOOK_URL = "https://chat.googleapis.com/v1/spaces/AAQALQCFzhI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=Hzk37c9qcN4bJNatPW097_LnvZj9gku3h2vMzK4B7ro";
-
 // ============================================================
 // アプリ状態
 // ============================================================
@@ -336,7 +334,7 @@ let pendingMid    = null;
 let dbOk          = false;
 
 // ============================================================
-// Supabase CRUD — エラーは必ずコンソールに出力
+// Supabase CRUD
 // ============================================================
 async function loadAll() {
   setSyncBadge('loading');
@@ -349,7 +347,7 @@ async function loadAll() {
     if (tr.error) throw new Error('task_list: ' + tr.error.message);
     if (mr.error) throw new Error('minutes_list: ' + mr.error.message);
 
-    tasks       = (tr.data || []).map(t => ({...t, due: t.due || ''}));
+    tasks       = (tr.data || []).map(t => ({...t, due: t.due || '', notes: t.notes || ''}));
     minutesList = (mr.data || []).map(m => ({
       ...m,
       task_ids: parseIds(m.task_ids)
@@ -357,10 +355,6 @@ async function loadAll() {
     dbOk = true;
     setSyncBadge('ok');
     renderAll();
-
-    // 💡 画面読み込み時、期限超過タスクがあれば自動でGoogle Chatへアラート通知
-    checkAndSendOverdueAlerts();
-
   } catch(e) {
     console.error('loadAll error:', e);
     dbOk = false;
@@ -370,33 +364,6 @@ async function loadAll() {
   }
 }
 
-// 💡【Google Chat 超過アラート自動送信機能】
-async function checkAndSendOverdueAlerts() {
-  if (!GOOGLE_CHAT_WEBHOOK_URL || GOOGLE_CHAT_WEBHOOK_URL.includes("ここにGoogleChat")) return;
-  
-  // 未完了(todo, progress)かつ、期限が本日を過ぎているタスクを絞り込み
-  const overdueTasks = tasks.filter(t => t.status !== 'done' && t.due && daysLeft(t.due) < 0);
-  if (overdueTasks.length === 0) return;
-
-  let text = "⚠️ *【期限超過タスクのアラート通知】*\n期限を過ぎている未完了タスクがあります。確認のうえ対応をお願いします。\n\n";
-  overdueTasks.forEach(t => {
-    const delayDays = Math.abs(daysLeft(t.due));
-    text += `👤 *担当者:* ${t.person}\n📋 *内容:* ${t.title}\n📅 *期限:* ${t.due} (${delayDays}日超過)\n-----------------------\n`;
-  });
-
-  try {
-    await fetch(GOOGLE_CHAT_WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json; charset=UTF-8" },
-      body: JSON.stringify({ text: text })
-    });
-    console.log("Google Chatへ期限超過通知を送信しました。");
-  } catch (err) {
-    console.error("Google Chatへの通知送信に失敗しました:", err);
-  }
-}
-
-// task_ids は DB上 text型（JSON文字列）または null → 配列に変換
 function parseIds(val) {
   if (!val) return [];
   if (Array.isArray(val)) return val;
@@ -410,7 +377,8 @@ async function dbInsertTask(t) {
     due:          t.due || null,
     status:       t.status       || 'todo',
     from_meeting: t.from_meeting || false,
-    minutes_id:   t.minutes_id   || null
+    minutes_id:   t.minutes_id   || null,
+    notes:        t.notes        || ''
   }]).select();
   if (error) throw new Error('INSERT task: ' + error.message);
   return data[0];
@@ -508,15 +476,6 @@ function buildPersonSelect(selId, cur) {
   ).join('') + '<option value="その他"'+(cur==='その他'?' selected':'')+'>その他</option>';
 }
 
-function showBanner(type, msg) {
-  const el = document.getElementById('db-banner');
-  if (!el) return;
-  if (!type || !msg) { el.style.display='none'; return; }
-  el.className = 'db-banner ' + type;
-  el.innerHTML = '<i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i><div>' + msg + '</div>';
-  el.style.display = 'flex';
-}
-
 function renderAll() {
   renderSummary(); renderFilters(); renderTasks();
   renderMinutes(); renderMembers();
@@ -597,17 +556,27 @@ function renderTasks() {
 }
 
 // ============================================================
-// タスク詳細モーダル
+// 💡タスク詳細モーダル（メモ履歴を美しく配置）
 // ============================================================
 function openTask(id) {
   const t = tasks.find(x=>x.id===id); if (!t) return;
   const dl  = daysLabel(t.due, t.status);
   const ns  = t.status==='todo'?'progress':t.status==='progress'?'done':'todo';
-  const nl  = ns==='progress'?'進行中にする':ns==='done'?'完了にする(報告を入れる)':'未着手に戻す';
+  
+  // ボタンテキストの出し分け
+  let nl = '進行中にする';
+  if (ns === 'progress') nl = '進行中にする(状況報告を入れる)';
+  if (ns === 'done')     nl = '完了にする(完了報告を入れる)';
+  if (ns === 'todo')     nl = '未着手に戻す';
+
   const ni  = ns==='progress'?'ti-player-play':ns==='done'?'ti-check':'ti-rotate-clockwise';
   const mtg = t.minutes_id ? minutesList.find(m=>String(m.id)===String(t.minutes_id)) : null;
   const po  = members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('')
     +'<option value="その他"'+(t.person==='その他'?' selected':'')+'>その他</option>';
+  
+  // 過去の経過履歴をきれいに表示
+  const historyHtml = t.notes ? `<div class="report-history-box">${escHtml(t.notes)}</div>` : '<div style="font-size:12px;color:#aaa;padding:4px">履歴はありません</div>';
+
   document.getElementById('modal-area').innerHTML =
     '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:8px">'+
@@ -615,6 +584,10 @@ function openTask(id) {
     '<button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1;flex-shrink:0">&times;</button></div>'+
     '<div class="info-card"><div class="info-label">タスク内容</div>'+
     '<textarea id="task-edit-title" style="width:100%;padding:12px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:14px;font-family:inherit;margin-top:4px;min-height:70px;resize:vertical;line-height:1.5">'+escHtml(t.title)+'</textarea></div>'+
+    
+    // 💡進捗・経過の履歴専用ボックス
+    '<div class="info-card"><div class="info-label">📢 進捗報告・経過履歴</div>'+historyHtml+'</div>'+
+
     '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">'+
     '<div class="info-card"><div class="info-label">担当者</div>'+
     '<select id="task-edit-person" style="width:100%;padding:9px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit;margin-top:4px">'+po+'</select></div>'+
@@ -634,6 +607,7 @@ function openTask(id) {
     '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i>閉じる</button>'+
     '</div></div>';
 }
+
 async function saveTaskEdit(id) {
   const title  = document.getElementById('task-edit-title').value.trim();
   const person = document.getElementById('task-edit-person').value;
@@ -647,27 +621,43 @@ async function saveTaskEdit(id) {
   } catch(e) { alert('保存エラー: '+e.message); }
 }
 
-// 💡【完了報告の自動追記機能】
+// 💡【進捗＆完了報告の履歴蓄積システム】
 async function changeStatus(id, s) {
   const idx = tasks.findIndex(t=>t.id===id);
   if (idx === -1) return;
 
-  let finalTitle = tasks[idx].title;
+  let currentNotes = tasks[idx].notes || '';
+  const person = tasks[idx].person;
+  
+  // 今日の日付と時刻を作成 (例: "06/08 18:35")
+  const now = new Date();
+  const timeStr = `${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
-  // 新しい状態が「完了(done)」になる場合のみ、ポップアップで報告を求める
-  if (s === 'done') {
-    const report = prompt("【完了報告】何をおこない、どう解決しましたか？実施内容を入力してください：\n(例：元受担当の〇〇さんへFAX送信し、受理の確認まで完了)");
-    if (report === null) return; // キャンセル時は何もしない
+  // 進行中にした時（進捗報告）
+  if (s === 'progress') {
+    const report = prompt("【進捗報告】現在の進捗や状況を入力してください：\n(例：元受に書類提出し、現在返答待ち状態)");
+    if (report === null) return; // キャンセル時
     if (report.trim() !== "") {
-      // 既存のタイトルに【完了報告: 入力内容】をガッチャンコする
-      finalTitle = `${finalTitle} 【完了報告: ${report.trim()}】`;
+      const logLine = `[${timeStr}] ${person} (進捗): ${report.trim()}\n`;
+      currentNotes = logLine + currentNotes; // 新しい報告を一番上に積み上げる
+    }
+  }
+  
+  // 完了にした時（完了報告）
+  if (s === 'done') {
+    const report = prompt("【完了報告】何をおこない、どう解決しましたか？実施内容を入力してください：\n(例：FAX送信し、電話にて受理されたことを確認)");
+    if (report === null) return; 
+    if (report.trim() !== "") {
+      const logLine = `[${timeStr}] ${person} (完了★): ${report.trim()}\n`;
+      currentNotes = logLine + currentNotes;
     }
   }
 
   try {
-    await dbUpdateTask(id, {status: s, title: finalTitle});
+    // タイトルは綺麗に残し、notes（履歴欄）に保存する
+    await dbUpdateTask(id, {status: s, notes: currentNotes});
     tasks[idx].status = s;
-    tasks[idx].title = finalTitle;
+    tasks[idx].notes = currentNotes;
     renderAll(); closeModal();
   } catch(e) { alert('更新エラー: '+e.message); }
 }
@@ -919,7 +909,7 @@ function formatMinutes(text,title,mode) {
     .replace(/えーと[、,\s]*/g,'').replace(/あのー?[、,\s]*/g,'').replace(/えー[、,\s]*/g,'')
     .replace(/まあ[、,\s]*/g,'').replace(/そのー?[、,\s]*/g,'').replace(/\s+/g,' ').trim();
   const sentences=cleaned.split(/[。\n]/).map(s=>s.trim()).filter(s=>s.length>3);
-  const av=['作成','提出','送付','発注','確認','完了','報告','連絡','対応','手配','準備','整備','調整','集計','実施','依頼','申請','お願い'];
+  const av=['作成','提出','送付','発注','確認','完了','報告','連絡','対応','手配','準備','整備','調整','集計','検討','実施','依頼','申請','お願い'];
   const ts=sentences.filter(s=>av.some(v=>s.includes(v)));
   const os=sentences.filter(s=>!av.some(v=>s.includes(v)));
   let r='【'+title+'】議事録\n';
@@ -959,47 +949,163 @@ async function goStep3() {
 }
 
 function extractTasksFromText(text) {
-  const results=[];
-  const defDue=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
-  const duePats=[
-    {r:/(\d+)月(\d+)日/,fn:function(m){var y=new Date().getFullYear();return new Date(y,parseInt(m[1])-1,parseInt(m[2])).toISOString().split('T')[0];}},
-    {r:/今月末/,fn:function(){var d=new Date();d.setMonth(d.getMonth()+1,0);return d.toISOString().split('T')[0];}},
-    {r:/(\d+)日以内/,fn:function(m){return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];}},
-    {r:/(\d+)日後/,fn:function(m){return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];}},
-    {r:/来週/,fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
-    {r:/今週中|今週/,fn:function(){return new Date(Date.now()+5*86400000).toISOString().split('T')[0];}},
-    {r:/明日/,fn:function(){return new Date(Date.now()+86400000).toISOString().split('T')[0];}},
-    {r:/今日|即日/,fn:function(){return today();}},
+  const results = [];
+  const defDue = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+
+  const duePats = [
+    {r:/(\d+)月(\d+)日/,    fn:function(m){var y=new Date().getFullYear();return new Date(y,parseInt(m[1])-1,parseInt(m[2])).toISOString().split('T')[0];}},
+    {r:/今月末/,             fn:function(){var d=new Date();d.setMonth(d.getMonth()+1,0);return d.toISOString().split('T')[0];}},
+    {r:/来週/,                fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
+    {r:/今週中|今週/,       fn:function(){return new Date(Date.now()+5*86400000).toISOString().split('T')[0];}},
+    {r:/翌日|明日/,          fn:function(){return new Date(Date.now()+1*86400000).toISOString().split('T')[0];}},
+    {r:/即日|即日開始|即時|即日継続/, fn:function(){return today();}},
+    {r:/今日/,               fn:function(){return today();}},
+    {r:/(\d+)日以内/,        fn:function(m){return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];}},
+    {r:/次回会議/,           fn:function(){return new Date(Date.now()+14*86400000).toISOString().split('T')[0];}},
+    {r:/継続/,               fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
+    {r:/毎週/,               fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
   ];
-  const verbs=['作成','提出','送付','発注','確認','報告','連絡','対応','手配','準備','整備','取りまとめ','調整','集計','検討','実施','依頼','申請','管理','改善','営業','強化','分析'];
-  const lines = text.split('\n');
-  
+
+  function getDue(str) {
+    for(var pi=0;pi<duePats.length;pi++){
+      var dm=str.match(duePats[pi].r);
+      if(dm){try{return duePats[pi].fn(dm);}catch(e){}}
+    }
+    return defDue;
+  }
+
+  function findPersons(str) {
+    var found = [];
+    members.forEach(function(name){
+      if(str.includes(name)) found.push(name);
+    });
+    if(!found.length) {
+      if(str.includes('営業部')||str.includes('全営業')) found.push('その他');
+      if(str.includes('管理側')||str.includes('管理部')) found.push('その他');
+      if(str.includes('広報')) found.push('その他');
+    }
+    return found.length ? found : null;
+  }
+
+  var lines = text.split('\n');
+  var inActionSection = false;
+
   lines.forEach(function(line) {
-    let l = line.trim();
-    if (l.length < 4 || l.includes('議事録') || l.includes('日時：') || l.includes('参加者：') || l.startsWith('■')) return;
-    if (l.includes('決定事項') || l.includes('アクションアイテム') || l.includes('その他議題') || l.includes('議事内容')) return;
-    l = l.replace(/^[・\-\*\s1234567890①②③④⑤⑥⑦⑧⑨⑩]+\s*/, '');
-    
-    let person = 'その他';
-    let matchedName = false;
-    for(const name of members){
-      if(l.includes(name)){
-        person=name; 
-        matchedName=true; 
-        break;
+    var l = line.trim();
+    if (!l) return;
+
+    if (/^4[\s\.\s]*アクション|アクションアイテム|アクションリスト/.test(l)) {
+      inActionSection = true;
+      return;
+    }
+    if (/^[5-9][\s\.]/.test(l) || /^次回会議|^数字確認|^管理者/.test(l)) {
+      inActionSection = false;
+    }
+
+    if (/^担当[\s\t]+(タスク|内容)/.test(l)) return;
+
+    var tabs = l.split(/\t/);
+    if (tabs.length >= 2) {
+      var namePart = tabs[0].trim();
+      var taskPart = tabs[1].trim();
+      var duePart  = tabs.length >= 3 ? tabs[2].trim() : '';
+
+      var persons = findPersons(namePart);
+      if (persons && taskPart.length >= 4 && taskPart.length <= 100) {
+        var due = duePart ? getDue(duePart) : getDue(l);
+        taskPart = taskPart.replace(/[（(][^）)]+[）)]/g, '').trim();
+        taskPart = taskPart.replace(/[。、！!？?]$/, '').trim();
+        persons.forEach(function(p){
+          results.push({title: taskPart, person: p, due: due});
+        });
+        return;
       }
     }
-    if(!matchedName && !verbs.some(v=>l.includes(v))) return;
-    
-    let due=defDue;
-    for(var pi=0;pi<duePats.length;pi++){var dm=l.match(duePats[pi].r);if(dm){try{due=duePats[pi].fn(dm);}catch(e){}break;}}
-    let title = l.replace(/^.{0,8}[さん]?[：:がはも、]\s*/, '').replace(/[。、！!？?]$/, '').trim();
-    if(title.length < 3 || title.length > 35) return;
-    
-    results.push({title:title, person:person, due:due});
+
+    if (inActionSection) {
+      var spaceMatch = l.match(/^([^\s]{1,10}(?:[\s・][^\s]{1,10})*)\s{2,}(.+?)\s{2,}(.+)$/);
+      if (!spaceMatch) {
+        var firstWord = l.split(/\s/)[0];
+        var fp = findPersons(firstWord);
+        if (fp) {
+          var rest = l.replace(firstWord, '').trim();
+          var dueMatch = rest.match(/(来週|今週中|明日|翌日|即日|今月末|次回会議|継続|毎週|\d+月\d+日|\d+日以内)(.*)$/);
+          var taskStr = rest, dueStr = '';
+          if(dueMatch){
+            dueStr = dueMatch[1];
+            taskStr = rest.replace(dueMatch[0], '').trim();
+          }
+          if(taskStr.length >= 4 && taskStr.length <= 100){
+            var due = dueStr ? getDue(dueStr) : getDue(l);
+            fp.forEach(function(p){
+              results.push({title: taskStr, person: p, due: due});
+            });
+            return;
+          }
+        }
+      } else {
+        var persons3 = findPersons(spaceMatch[1]);
+        if(persons3){
+          var taskStr2 = spaceMatch[2].trim();
+          var dueStr2  = spaceMatch[3].trim();
+          var due2 = getDue(dueStr2)||getDue(l);
+          taskStr2 = taskStr2.replace(/[。、！!？?]$/, '').trim();
+          if(taskStr2.length >= 4){
+            persons3.forEach(function(p){
+              results.push({title: taskStr2, person: p, due: due2});
+            });
+            return;
+          }
+        }
+      }
+    }
+
+    var colonMatch = l.match(/^([^\s：:、]{1,12}(?:[・&][^\s：:、]{1,12})*)\s*[：:]\s*(.+)/);
+    if (colonMatch) {
+      var namePart2 = colonMatch[1];
+      var taskPart2 = colonMatch[2].trim();
+      if (taskPart2.length < 4) return;
+      var persons4 = findPersons(namePart2);
+      var due3 = defDue;
+      var bm = taskPart2.match(/[（(]([^）)]+)[）)]/);
+      if(bm){ due3=getDue(bm[1]); taskPart2=taskPart2.replace(/[（(][^）)]+[）)]/g,'').trim(); }
+      else { due3=getDue(l); }
+      taskPart2 = taskPart2.replace(/[。、！!？?]$/, '').trim();
+      if(taskPart2.length < 4 || taskPart2.length > 80) return;
+      if(persons4 && persons4.length > 0){
+        persons4.forEach(function(p){ results.push({title:taskPart2, person:p, due:due3}); });
+      } else {
+        var tv=['作成','提出','確認','報告','連絡','対応','実施','訪問','検討','記録','整備','調整'];
+        if(tv.some(function(v){return taskPart2.includes(v;})){
+          results.push({title:taskPart2, person:'その他', due:due3});
+        }
+      }
+      return;
+    }
+
+    var taskVerbs = ['作成','提出','送付','発注','確認','報告','連絡','対応','手配','準備',
+      '整備','調整','実施','依頼','申請','共有','整理','強化','推進','開始','訪問',
+      '導入','検討','記録','洗い出し','告知','運用','増加','復旧'];
+    var lClean = l.replace(/^[・\-\*\s\d\.\)]+/, '').trim();
+    var hasMember=false, person='その他';
+    members.forEach(function(name){ if(lClean.includes(name)&&!hasMember){person=name;hasMember=true;} });
+    var hasVerb=taskVerbs.some(function(v){return lClean.includes(v);});
+    if(!hasMember||!hasVerb) return;
+    if(/^[\d]+[\.\s]/.test(lClean)) return;
+    var skipWords2=['会議概要','重要課題','決定事項','数字確認','次回会議','管理者'];
+    if(skipWords2.some(function(s){return lClean.startsWith(s);})) return;
+    var due4=getDue(lClean);
+    var title2=lClean.replace(/[。、！!？?]$/,'').trim();
+    if(title2.length<4||title2.length>80) return;
+    results.push({title:title2, person:person, due:due4});
   });
-  const seen=new Set();
-  return results.filter(t=>{if(seen.has(t.title))return false;seen.add(t.title);return true;});
+
+  var seen={};
+  pendingTasks = results.filter(function(t){
+    var key=t.title.slice(0,25);
+    if(seen[key])return false;
+    seen[key]=true;return true;
+  });
 }
 
 function renderTaskExtract(extracted, mid) {
@@ -1007,14 +1113,14 @@ function renderTaskExtract(extracted, mid) {
   if (!extracted.length) {
     area.innerHTML=
       '<div class="db-banner warn"><i class="ti ti-alert-triangle" style="font-size:18px;flex-shrink:0"></i>'+
-      '<div>アクションアイテムが綺麗に分離できませんでした。手動でタスクを登録してください。</div></div>'+
+      '<div>アクションアイテムが検出されませんでした。手動で追加してください。</div></div>'+
       '<button class="big-btn btn-primary" onclick="switchTab(\'add\')"><i class="ti ti-plus"></i> 手動でタスクを追加</button>';
     return;
   }
-  let html='<div style="font-size:13px;color:#888;margin-bottom:10px"><i class="ti ti-sparkles"></i> '+extracted.length+'件のタスクを検出。担当者・期限を確認してください。</div>';
+  let html='<div style="font-size:13px;color:#888;margin-bottom:10px"><i class="ti ti-sparkles"></i> '+extracted.length+'件のタスクを検出。不要な行は ✕ で除外できます。</div>';
   extracted.forEach((t,i)=>{
     const opts=members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('')
-      +'<option value="その他"'+(t.person==='other'||t.person==='その他'?' selected':'')+'>その他</option>';
+      +'<option value="その他"'+(t.person==='その他'?' selected':'')+'>その他</option>';
     html+='<div class="extracted-task-row" id="erow-'+i+'">'+
       '<div class="task-text">'+escHtml(t.title)+'</div>'+
       '<select id="ep-'+i+'">'+opts+'</select>'+
@@ -1049,7 +1155,7 @@ async function confirmAndRegister(mid) {
       if(row && row.style.pointerEvents==='none') continue; 
       const person=document.getElementById('ep-'+i)?.value||t.person;
       const due=document.getElementById('ed-'+i)?.value||t.due;
-      const saved=await dbInsertTask({title:t.title,person,due,status:'todo',from_meeting:true,minutes_id:mid});
+      const saved=await dbInsertTask({title:t.title,person,due,status:'todo',from_meeting:true,minutes_id:mid,notes:''});
       tasks.push(saved);
       createdIds.push(saved.id);
     }
@@ -1060,7 +1166,7 @@ async function confirmAndRegister(mid) {
     }
     pendingTasks=[]; pendingMid=null;
     clearAIForm(); renderAll(); switchTab('tasks');
-    alert('✅ '+createdIds.length+'件のタスクをクラウドに永久保存しました！\nページを更新しても絶対に消えません。');
+    alert('✅ '+createdIds.length+'件のタスクをデータベースに保存しました！\nページを更新しても消えません。');
   } catch(e) {
     if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-check"></i> タスクを登録してダッシュボードに反映';}
     alert('登録エラー: '+e.message+'\n\nSupabaseの接続状態を確認してください。');
@@ -1097,7 +1203,7 @@ async function addManualTask() {
   if (!title||!due) { alert('タスク内容と期限を入力してください'); return; }
   try {
     setSyncBadge('loading');
-    const saved=await dbInsertTask({title,person,due,status,from_meeting:false,minutes_id:null});
+    const saved=await dbInsertTask({title,person,due,status,from_meeting:false,minutes_id:null,notes:''});
     tasks.push(saved);
     setSyncBadge('ok');
     document.getElementById('f-title').value='';
@@ -1119,15 +1225,6 @@ function switchTab(tab) {
   if(tab==='minutes') renderMinutes();
   if(tab==='members') renderMembers();
   if(tab==='ai')      showStep(1);
-}
-
-function showBanner(type, msg) {
-  const el = document.getElementById('db-banner');
-  if (!el) return;
-  if (!type || !msg) { el.style.display='none'; return; }
-  el.className = 'db-banner ' + type;
-  el.innerHTML = '<i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i><div>' + msg + '</div>';
-  el.style.display = 'flex';
 }
 
 // ============================================================
