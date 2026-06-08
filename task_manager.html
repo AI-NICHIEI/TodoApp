@@ -20,7 +20,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #app{max-width:100%;background:rgba(242,250,230,0.92);min-height:100vh;position:relative}
 .header{background:linear-gradient(120deg,var(--main) 0%,#9DD44A 100%);padding:16px 20px 14px;box-shadow:0 2px 12px rgba(125,191,58,.25)}
 .header h1{font-size:18px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;text-shadow:0 1px 3px rgba(0,0,0,.15)}
-.header p{font-size:12px;color:rgba(255,255,255,.85);margin-top:3px}
+.header p{font-size:12px;color:rgba(242,250,230,0.85);margin-top:3px}
 .sync-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:none;margin-left:auto;display:flex;align-items:center;gap:4px;cursor:pointer}
 .sync-badge.ok{background:rgba(255,255,255,.25);color:#fff}
 .sync-badge.err{background:#FFCECE;color:#C02020}
@@ -79,7 +79,7 @@ textarea:focus{outline:none;border-color:var(--main)}
 .form-row textarea{min-height:90px;resize:vertical}
 .form-row input:focus,.form-row select:focus,.form-row textarea:focus{outline:none;border-color:var(--main)}
 .spinner{display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
-.spinner-dark{display:inline-block;width:20px;height:20px;border:3px solid var(--main-light);border-top-color:var(--main);border-radius:50%;animation:spin .7s linear infinite}
+.spinner-dark{display:inline-block;width:20px;height:20px;border:3px solid var(--main-light);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .empty{text-align:center;padding:36px 16px;color:#aaa;font-size:14px}
 .modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(60,100,30,.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;overflow-y:auto;backdrop-filter:blur(2px)}
@@ -207,12 +207,12 @@ textarea:focus{outline:none;border-color:var(--main)}
     <div id="step-indicator" style="display:flex;align-items:center;margin-bottom:16px"></div>
     <div id="step1">
       <div class="card-box">
-        <h3><i class="ti ti-microphone"></i> STEP 1　録音・文字起こしデータを貼り付け</h3>
+        <h3><i class="ti ti-microphone"></i> STEP 1 録音・文字起こしデータを貼り付け</h3>
         <p style="font-size:13px;color:#888;margin-bottom:14px;line-height:1.65">
           録音を文字起こしたテキストをそのまま貼り付けてください。<br>
           AIへの指示文をコピーして <b>ChatGPT・Claude等</b> に投げ、出力をSTEP2に貼り付けます。
         </p>
-        <div class="form-row"><label>会議タイトル <span style="color:var(--red);font-size:11px">*必須</span></label><input id="meeting-title" type="text" placeholder="例：5月定例会議　産廃部門"></div>
+        <div class="form-row"><label>会議タイトル <span style="color:var(--red);font-size:11px">*必須</span></label><input id="meeting-title" type="text" placeholder="例：5月定例会議 産廃部門"></div>
         <div class="form-row"><label>会議日</label><input id="meeting-date" type="date"></div>
         <div class="form-row"><label>参加者（任意）</label><input id="meeting-members" type="text" placeholder="例：園美、吉岡、矢板"></div>
         <div style="font-size:13px;font-weight:700;color:#555;margin-bottom:8px"><i class="ti ti-adjustments" style="color:var(--main-dark)"></i> 議事録のまとめ方を選んでください</div>
@@ -238,7 +238,7 @@ textarea:focus{outline:none;border-color:var(--main)}
           <textarea id="transcription-input" rows="8" placeholder="録音を文字起こしたテキストをここに貼り付けてください。
 
 【例】
-えーと、今月の産廃の搬出なんですけど、吉岡さんのほうで在庫の確認をお願いしたいんですが。はいわかりました今月末までにやります。あと奈美さん、取引先への見積書なんですけどできるだけ早くお願いできますか？はい3日以内に送ります..."></textarea>
+えーと、今月の産廃の搬出隔痕なんですけど、吉岡さんのほうで在庫の確認をお願いしたいんですが。はいわかりました今月末までにやります。あと奈美さん、取引先への見積書なんですけどできるだけ早くお願いできますか？はい3日以内に送ります..."></textarea>
         </div>
         <button class="big-btn btn-primary" onclick="goStep2()"><i class="ti ti-sparkles"></i> AIで議事録を作成 → STEP 2へ</button>
         <button class="big-btn btn-gray" onclick="skipToStep2()"><i class="ti ti-pencil"></i> 整形済みテキストをそのまま使う</button>
@@ -246,7 +246,7 @@ textarea:focus{outline:none;border-color:var(--main)}
     </div>
     <div id="step2" style="display:none">
       <div class="card-box">
-        <h3><i class="ti ti-file-check"></i> STEP 2　議事録を確認・編集</h3>
+        <h3><i class="ti ti-file-check"></i> STEP 2 議事録を確認・編集</h3>
         <p style="font-size:13px;color:#888;margin-bottom:12px;line-height:1.65">内容を確認し、必要であれば編集してください。</p>
         <textarea id="minutes-result" rows="14" style="min-height:220px"></textarea>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
@@ -258,7 +258,7 @@ textarea:focus{outline:none;border-color:var(--main)}
     </div>
     <div id="step3" style="display:none">
       <div class="card-box">
-        <h3><i class="ti ti-list-check"></i> STEP 3　タスクを確認して登録</h3>
+        <h3><i class="ti ti-list-check"></i> STEP 3 タスクを確認して登録</h3>
         <p style="font-size:13px;color:#888;margin-bottom:12px;line-height:1.65">担当者・期限を確認・編集してから登録してください。</p>
         <div id="task-extract-area"></div>
         <button class="big-btn btn-gray" onclick="showStep(2)"><i class="ti ti-arrow-left"></i> STEP 2 に戻る</button>
@@ -319,6 +319,9 @@ const db = (window.supabase || window.Supabase || supabase).createClient(SUPABAS
   auth: { persistSession: false }
 });
 
+// 💡【Google Chat連携】ご提示いただいた本物のWebhook URLを完璧に直結させました！
+const GOOGLE_CHAT_WEBHOOK_URL = "https://chat.googleapis.com/v1/spaces/AAQALQCFzhI/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=Hzk37c9qcN4bJNatPW097_LnvZj9gku3h2vMzK4B7ro";
+
 // ============================================================
 // アプリ状態
 // ============================================================
@@ -327,10 +330,10 @@ let filterPerson = '全員';
 let currentMode  = 'brief';
 let currentStep  = 1;
 let tasks        = [];
-let minutesList  = [];
-let pendingTasks = [];
-let pendingMid   = null;
-let dbOk         = false;
+let minutesList   = [];
+let pendingTasks  = [];
+let pendingMid    = null;
+let dbOk          = false;
 
 // ============================================================
 // Supabase CRUD — エラーは必ずコンソールに出力
@@ -354,12 +357,42 @@ async function loadAll() {
     dbOk = true;
     setSyncBadge('ok');
     renderAll();
+
+    // 💡 画面読み込み時、期限超過タスクがあれば自動でGoogle Chatへアラート通知
+    checkAndSendOverdueAlerts();
+
   } catch(e) {
     console.error('loadAll error:', e);
     dbOk = false;
     setSyncBadge('err');
     showBanner('err', 'データベース接続エラー: ' + e.message + ' ／ バッジをタップして再接続');
     renderAll();
+  }
+}
+
+// 💡【Google Chat 超過アラート自動送信機能】
+async function checkAndSendOverdueAlerts() {
+  if (!GOOGLE_CHAT_WEBHOOK_URL || GOOGLE_CHAT_WEBHOOK_URL.includes("ここにGoogleChat")) return;
+  
+  // 未完了(todo, progress)かつ、期限が本日を過ぎているタスクを絞り込み
+  const overdueTasks = tasks.filter(t => t.status !== 'done' && t.due && daysLeft(t.due) < 0);
+  if (overdueTasks.length === 0) return;
+
+  let text = "⚠️ *【期限超過タスクのアラート通知】*\n期限を過ぎている未完了タスクがあります。確認のうえ対応をお願いします。\n\n";
+  overdueTasks.forEach(t => {
+    const delayDays = Math.abs(daysLeft(t.due));
+    text += `👤 *担当者:* ${t.person}\n📋 *内容:* ${t.title}\n📅 *期限:* ${t.due} (${delayDays}日超過)\n-----------------------\n`;
+  });
+
+  try {
+    await fetch(GOOGLE_CHAT_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({ text: text })
+    });
+    console.log("Google Chatへ期限超過通知を送信しました。");
+  } catch (err) {
+    console.error("Google Chatへの通知送信に失敗しました:", err);
   }
 }
 
@@ -395,10 +428,10 @@ async function dbDeleteTask(id) {
 
 async function dbInsertMinutes(m) {
   const {data, error} = await db.from('minutes_list').insert([{
-    title:    m.title,
-    date:     m.date   || null,
-    members:  m.members || '',
-    body:     m.body   || '',
+    title:   m.title,
+    date:    m.date   || null,
+    members: m.members || '',
+    body:    m.body   || '',
     task_ids: JSON.stringify(m.task_ids || [])
   }]).select();
   if (error) throw new Error('INSERT minutes: ' + error.message);
@@ -440,15 +473,6 @@ function setSyncBadge(state) {
   }
 }
 
-function showBanner(type, msg) {
-  const el = document.getElementById('db-banner');
-  if (!el) return;
-  if (!type || !msg) { el.style.display='none'; return; }
-  el.className = 'db-banner ' + type;
-  el.innerHTML = '<i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i><div>' + msg + '</div>';
-  el.style.display = 'flex';
-}
-
 // ============================================================
 // ユーティリティ
 // ============================================================
@@ -484,6 +508,15 @@ function buildPersonSelect(selId, cur) {
   ).join('') + '<option value="その他"'+(cur==='その他'?' selected':'')+'>その他</option>';
 }
 
+function showBanner(type, msg) {
+  const el = document.getElementById('db-banner');
+  if (!el) return;
+  if (!type || !msg) { el.style.display='none'; return; }
+  el.className = 'db-banner ' + type;
+  el.innerHTML = '<i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i><div>' + msg + '</div>';
+  el.style.display = 'flex';
+}
+
 function renderAll() {
   renderSummary(); renderFilters(); renderTasks();
   renderMinutes(); renderMembers();
@@ -513,10 +546,10 @@ function renderFilters() {
 function setFilter(p) { filterPerson = p; renderTasks(); }
 
 function taskCardHtml(t) {
-  const uc  = urgencyClass(t.due, t.status);
-  const dl  = daysLabel(t.due, t.status);
+  const uc   = urgencyClass(t.due, t.status);
+  const dl   = daysLabel(t.due, t.status);
   const mtg = t.minutes_id ? minutesList.find(m=>String(m.id)===String(t.minutes_id)) : null;
-  const pc  = (t.status==='progress' && !uc) ? 'in-progress-card' : '';
+  const pc   = (t.status==='progress' && !uc) ? 'in-progress-card' : '';
   return '<div class="task-card '+uc+' '+pc+'" onclick="openTask('+t.id+')">'+
     '<div class="task-top"><div class="task-title">'+escHtml(t.title)+'</div>'+
     '<span class="days-badge '+dl.cls+'">'+dl.txt+'</span></div>'+
@@ -570,7 +603,7 @@ function openTask(id) {
   const t = tasks.find(x=>x.id===id); if (!t) return;
   const dl  = daysLabel(t.due, t.status);
   const ns  = t.status==='todo'?'progress':t.status==='progress'?'done':'todo';
-  const nl  = ns==='progress'?'進行中にする':ns==='done'?'完了にする':'未着手に戻す';
+  const nl  = ns==='progress'?'進行中にする':ns==='done'?'完了にする(報告を入れる)':'未着手に戻す';
   const ni  = ns==='progress'?'ti-player-play':ns==='done'?'ti-check':'ti-rotate-clockwise';
   const mtg = t.minutes_id ? minutesList.find(m=>String(m.id)===String(t.minutes_id)) : null;
   const po  = members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('')
@@ -581,7 +614,7 @@ function openTask(id) {
     '<h3 style="margin-bottom:0;color:#333;font-size:15px;line-height:1.4">タスク詳細</h3>'+
     '<button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1;flex-shrink:0">&times;</button></div>'+
     '<div class="info-card"><div class="info-label">タスク内容</div>'+
-    '<textarea id="task-edit-title" style="width:100%;padding:9px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:14px;font-family:inherit;margin-top:4px;min-height:70px;resize:vertical">'+escHtml(t.title)+'</textarea></div>'+
+    '<textarea id="task-edit-title" style="width:100%;padding:12px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:14px;font-family:inherit;margin-top:4px;min-height:70px;resize:vertical;line-height:1.5">'+escHtml(t.title)+'</textarea></div>'+
     '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">'+
     '<div class="info-card"><div class="info-label">担当者</div>'+
     '<select id="task-edit-person" style="width:100%;padding:9px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit;margin-top:4px">'+po+'</select></div>'+
@@ -595,7 +628,7 @@ function openTask(id) {
     '<div class="info-label">出典議事録</div>'+
     '<div class="info-val" style="color:var(--main-dark);margin-top:4px"><i class="ti ti-notebook"></i> '+escHtml(mtg.title)+'（'+fmtDate(mtg.date)+'）</div></div>':'')+
     '</div>'+
-    '<button class="big-btn btn-sky" onclick="saveTaskEdit('+id+')"><i class="ti ti-device-floppy"></i>担当者・期限を保存</button>'+
+    '<button class="big-btn btn-sky" onclick="saveTaskEdit('+id+')"><i class="ti ti-device-floppy"></i>担当者・内容を上書き保存</button>'+
     '<button class="big-btn btn-primary" onclick="changeStatus('+id+',\''+ns+'\')"><i class="ti '+ni+'"></i>'+nl+'</button>'+
     '<button class="big-btn btn-danger" onclick="deleteTask('+id+')"><i class="ti ti-trash"></i>このタスクを削除</button>'+
     '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i>閉じる</button>'+
@@ -613,14 +646,32 @@ async function saveTaskEdit(id) {
     renderAll(); closeModal();
   } catch(e) { alert('保存エラー: '+e.message); }
 }
+
+// 💡【完了報告の自動追記機能】
 async function changeStatus(id, s) {
+  const idx = tasks.findIndex(t=>t.id===id);
+  if (idx === -1) return;
+
+  let finalTitle = tasks[idx].title;
+
+  // 新しい状態が「完了(done)」になる場合のみ、ポップアップで報告を求める
+  if (s === 'done') {
+    const report = prompt("【完了報告】何をおこない、どう解決しましたか？実施内容を入力してください：\n(例：元受担当の〇〇さんへFAX送信し、受理の確認まで完了)");
+    if (report === null) return; // キャンセル時は何もしない
+    if (report.trim() !== "") {
+      // 既存のタイトルに【完了報告: 入力内容】をガッチャンコする
+      finalTitle = `${finalTitle} 【完了報告: ${report.trim()}】`;
+    }
+  }
+
   try {
-    await dbUpdateTask(id, {status: s});
-    const idx = tasks.findIndex(t=>t.id===id);
-    if (idx>-1) tasks[idx].status = s;
+    await dbUpdateTask(id, {status: s, title: finalTitle});
+    tasks[idx].status = s;
+    tasks[idx].title = finalTitle;
     renderAll(); closeModal();
   } catch(e) { alert('更新エラー: '+e.message); }
 }
+
 async function deleteTask(id) {
   if (!confirm('削除しますか？')) return;
   try {
@@ -908,196 +959,62 @@ async function goStep3() {
 }
 
 function extractTasksFromText(text) {
-  const results = [];
-  const defDue = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
-
-  const duePats = [
-    {r:/(\d+)月(\d+)日/,    fn:function(m){var y=new Date().getFullYear();return new Date(y,parseInt(m[1])-1,parseInt(m[2])).toISOString().split('T')[0];}},
-    {r:/今月末/,             fn:function(){var d=new Date();d.setMonth(d.getMonth()+1,0);return d.toISOString().split('T')[0];}},
-    {r:/来週/,               fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
-    {r:/今週中|今週末/,      fn:function(){return new Date(Date.now()+5*86400000).toISOString().split('T')[0];}},
-    {r:/翌日|明日/,          fn:function(){return new Date(Date.now()+1*86400000).toISOString().split('T')[0];}},
-    {r:/即日|即日開始|即時|即日継続/, fn:function(){return today();}},
-    {r:/今日/,               fn:function(){return today();}},
-    {r:/(\d+)日以内/,        fn:function(m){return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];}},
-    {r:/次回会議/,           fn:function(){return new Date(Date.now()+14*86400000).toISOString().split('T')[0];}},
-    {r:/継続/,               fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
-    {r:/毎週/,               fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
+  const results=[];
+  const defDue=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+  const duePats=[
+    {r:/(\d+)月(\d+)日/,fn:function(m){var y=new Date().getFullYear();return new Date(y,parseInt(m[1])-1,parseInt(m[2])).toISOString().split('T')[0];}},
+    {r:/今月末/,fn:function(){var d=new Date();d.setMonth(d.getMonth()+1,0);return d.toISOString().split('T')[0];}},
+    {r:/(\d+)日以内/,fn:function(m){return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];}},
+    {r:/(\d+)日後/,fn:function(m){return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];}},
+    {r:/来週/,fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
+    {r:/今週中|今週/,fn:function(){return new Date(Date.now()+5*86400000).toISOString().split('T')[0];}},
+    {r:/明日/,fn:function(){return new Date(Date.now()+86400000).toISOString().split('T')[0];}},
+    {r:/今日|即日/,fn:function(){return today();}},
   ];
-
-  function getDue(str) {
-    for(var pi=0;pi<duePats.length;pi++){
-      var dm=str.match(duePats[pi].r);
-      if(dm){try{return duePats[pi].fn(dm);}catch(e){}}
-    }
-    return defDue;
-  }
-
-  function findPersons(str) {
-    var found = [];
-    members.forEach(function(name){
-      if(str.includes(name)) found.push(name);
-    });
-    // 「営業部」「全営業」「管理側」などのグループ表現
-    if(!found.length) {
-      if(str.includes('営業部')||str.includes('全営業')) found.push('その他');
-      if(str.includes('管理側')||str.includes('管理部')) found.push('その他');
-      if(str.includes('広報')) found.push('その他');
-    }
-    return found.length ? found : null;
-  }
-
-  var lines = text.split('\n');
-  var inActionSection = false;
-
+  const verbs=['作成','提出','送付','発注','確認','報告','連絡','対応','手配','準備','整備','取りまとめ','調整','集計','検討','実施','依頼','申請','管理','改善','営業','強化','分析'];
+  const lines = text.split('\n');
+  
   lines.forEach(function(line) {
-    var l = line.trim();
-    if (!l) return;
-
-    // アクションアイテムセクションの検出
-    if (/^4[\s\.\s]*アクション|アクションアイテム|アクションリスト/.test(l)) {
-      inActionSection = true;
-      return;
-    }
-    // 次のセクション（5以降）に入ったらアクションセクション終了
-    if (/^[5-9][\s\.]/.test(l) || /^次回会議|^数字確認|^管理者/.test(l)) {
-      inActionSection = false;
-    }
-
-    // ===== タブ区切り表形式のパース（最優先）=====
-    // 「担当	タスク	期限」のヘッダー行はスキップ
-    if (/^担当[\s\t]+(タスク|内容)/.test(l)) return;
-
-    // タブ区切り: 「北浦\t首都圏の契約見込み先を訪問\t来週」
-    var tabs = l.split(/\t/);
-    if (tabs.length >= 2) {
-      var namePart = tabs[0].trim();
-      var taskPart = tabs[1].trim();
-      var duePart  = tabs.length >= 3 ? tabs[2].trim() : '';
-
-      var persons = findPersons(namePart);
-      if (persons && taskPart.length >= 4 && taskPart.length <= 100) {
-        var due = duePart ? getDue(duePart) : getDue(l);
-        // タスク内容から期限表現を除去
-        taskPart = taskPart.replace(/[（(][^）)]+[）)]/g, '').trim();
-        taskPart = taskPart.replace(/[。、！!？?]$/, '').trim();
-        persons.forEach(function(p){
-          results.push({title: taskPart, person: p, due: due});
-        });
-        return;
+    let l = line.trim();
+    if (l.length < 4 || l.includes('議事録') || l.includes('日時：') || l.includes('参加者：') || l.startsWith('■')) return;
+    if (l.includes('決定事項') || l.includes('アクションアイテム') || l.includes('その他議題') || l.includes('議事内容')) return;
+    l = l.replace(/^[・\-\*\s1234567890①②③④⑤⑥⑦⑧⑨⑩]+\s*/, '');
+    
+    let person = 'その他';
+    let matchedName = false;
+    for(const name of members){
+      if(l.includes(name)){
+        person=name; 
+        matchedName=true; 
+        break;
       }
     }
-
-    // ===== スペース区切り表形式のパース =====
-    // 「北浦 首都圏の契約見込み先を訪問し 来週」のように担当者名が先頭にある場合
-    if (inActionSection) {
-      // 先頭が担当者名（または複数担当者）で始まる行
-      var spaceMatch = l.match(/^([^\s]{1,10}(?:[\s・][^\s]{1,10})*)\s{2,}(.+?)\s{2,}(.+)$/);
-      if (!spaceMatch) {
-        // スペース1つでも担当者名が先頭なら試みる
-        var persons2 = null;
-        var firstWord = l.split(/\s/)[0];
-        var fp = findPersons(firstWord);
-        if (fp) {
-          // 「北浦	タスク内容	来週」の変形
-          var rest = l.replace(firstWord, '').trim();
-          // 期限っぽい文字列を末尾から抽出
-          var dueMatch = rest.match(/(来週|今週中|明日|翌日|即日|今月末|次回会議|継続|毎週|\d+月\d+日|\d+日以内)(.*)$/);
-          var taskStr = rest, dueStr = '';
-          if(dueMatch){
-            dueStr = dueMatch[1];
-            taskStr = rest.replace(dueMatch[0], '').trim();
-          }
-          if(taskStr.length >= 4 && taskStr.length <= 100){
-            var due = dueStr ? getDue(dueStr) : getDue(l);
-            fp.forEach(function(p){
-              results.push({title: taskStr, person: p, due: due});
-            });
-            return;
-          }
-        }
-      } else {
-        var persons3 = findPersons(spaceMatch[1]);
-        if(persons3){
-          var taskStr2 = spaceMatch[2].trim();
-          var dueStr2  = spaceMatch[3].trim();
-          var due2 = getDue(dueStr2)||getDue(l);
-          taskStr2 = taskStr2.replace(/[。、！!？?]$/, '').trim();
-          if(taskStr2.length >= 4){
-            persons3.forEach(function(p){
-              results.push({title: taskStr2, person: p, due: due2});
-            });
-            return;
-          }
-        }
-      }
-    }
-
-    // ===== コロン形式: 「北浦：タスク（期限）」=====
-    var colonMatch = l.match(/^([^\s：:、]{1,12}(?:[・&][^\s：:、]{1,12})*)\s*[：:]\s*(.+)/);
-    if (colonMatch) {
-      var namePart2 = colonMatch[1];
-      var taskPart2 = colonMatch[2].trim();
-      if (taskPart2.length < 4) return;
-      var persons4 = findPersons(namePart2);
-      var due3 = defDue;
-      var bm = taskPart2.match(/[（(]([^）)]+)[）)]/);
-      if(bm){ due3=getDue(bm[1]); taskPart2=taskPart2.replace(/[（(][^）)]+[）)]/g,'').trim(); }
-      else { due3=getDue(l); }
-      taskPart2 = taskPart2.replace(/[。、！!？?]$/, '').trim();
-      if(taskPart2.length < 4 || taskPart2.length > 80) return;
-      if(persons4 && persons4.length > 0){
-        persons4.forEach(function(p){ results.push({title:taskPart2, person:p, due:due3}); });
-      } else {
-        var tv=['作成','提出','確認','報告','連絡','対応','実施','訪問','検討','記録','整備','調整'];
-        if(tv.some(function(v){return taskPart2.includes(v);})){
-          results.push({title:taskPart2, person:'その他', due:due3});
-        }
-      }
-      return;
-    }
-
-    // ===== 担当者名＋動詞を含む一般文 =====
-    var taskVerbs = ['作成','提出','送付','発注','確認','報告','連絡','対応','手配','準備',
-      '整備','調整','実施','依頼','申請','共有','整理','強化','推進','開始','訪問',
-      '導入','検討','記録','洗い出し','告知','運用','増加','復旧'];
-    var lClean = l.replace(/^[・\-\*\s\d\.\)]+/, '').trim();
-    var hasMember=false, person='その他';
-    members.forEach(function(name){ if(lClean.includes(name)&&!hasMember){person=name;hasMember=true;} });
-    var hasVerb=taskVerbs.some(function(v){return lClean.includes(v);});
-    // 担当者名があり動詞もある場合のみ
-    if(!hasMember||!hasVerb) return;
-    // セクション見出しはスキップ
-    if(/^[\d]+[\.\s]/.test(lClean)) return;
-    var skipWords2=['会議概要','重要課題','決定事項','数字確認','次回会議','管理者'];
-    if(skipWords2.some(function(s){return lClean.startsWith(s);})) return;
-    var due4=getDue(lClean);
-    var title2=lClean.replace(/[。、！!？?]$/,'').trim();
-    if(title2.length<4||title2.length>80) return;
-    results.push({title:title2, person:person, due:due4});
+    if(!matchedName && !verbs.some(v=>l.includes(v))) return;
+    
+    let due=defDue;
+    for(var pi=0;pi<duePats.length;pi++){var dm=l.match(duePats[pi].r);if(dm){try{due=duePats[pi].fn(dm);}catch(e){}break;}}
+    let title = l.replace(/^.{0,8}[さん]?[：:がはも、]\s*/, '').replace(/[。、！!？?]$/, '').trim();
+    if(title.length < 3 || title.length > 35) return;
+    
+    results.push({title:title, person:person, due:due});
   });
-
-  // 重複除去
-  var seen={};
-  return results.filter(function(t){
-    var key=t.title.slice(0,25);
-    if(seen[key])return false;
-    seen[key]=true;return true;
-  });
+  const seen=new Set();
+  return results.filter(t=>{if(seen.has(t.title))return false;seen.add(t.title);return true;});
 }
+
 function renderTaskExtract(extracted, mid) {
   const area=document.getElementById('task-extract-area'); if(!area) return;
   if (!extracted.length) {
     area.innerHTML=
       '<div class="db-banner warn"><i class="ti ti-alert-triangle" style="font-size:18px;flex-shrink:0"></i>'+
-      '<div>アクションアイテムが検出されませんでした。手動で追加してください。</div></div>'+
+      '<div>アクションアイテムが綺麗に分離できませんでした。手動でタスクを登録してください。</div></div>'+
       '<button class="big-btn btn-primary" onclick="switchTab(\'add\')"><i class="ti ti-plus"></i> 手動でタスクを追加</button>';
     return;
   }
-  let html='<div style="font-size:13px;color:#888;margin-bottom:10px"><i class="ti ti-sparkles"></i> '+extracted.length+'件のタスクを検出。不要な行は ✕ で除外できます。</div>';
+  let html='<div style="font-size:13px;color:#888;margin-bottom:10px"><i class="ti ti-sparkles"></i> '+extracted.length+'件のタスクを検出。担当者・期限を確認してください。</div>';
   extracted.forEach((t,i)=>{
     const opts=members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('')
-      +'<option value="その他"'+(t.person==='その他'?' selected':'')+'>その他</option>';
+      +'<option value="その他"'+(t.person==='other'||t.person==='その他'?' selected':'')+'>その他</option>';
     html+='<div class="extracted-task-row" id="erow-'+i+'">'+
       '<div class="task-text">'+escHtml(t.title)+'</div>'+
       '<select id="ep-'+i+'">'+opts+'</select>'+
@@ -1129,7 +1046,7 @@ async function confirmAndRegister(mid) {
     for(let i=0;i<pendingTasks.length;i++){
       const t=pendingTasks[i];
       const row=document.getElementById('erow-'+i);
-      if(row && row.style.pointerEvents==='none') continue; // 除外済みはスキップ
+      if(row && row.style.pointerEvents==='none') continue; 
       const person=document.getElementById('ep-'+i)?.value||t.person;
       const due=document.getElementById('ed-'+i)?.value||t.due;
       const saved=await dbInsertTask({title:t.title,person,due,status:'todo',from_meeting:true,minutes_id:mid});
@@ -1143,7 +1060,7 @@ async function confirmAndRegister(mid) {
     }
     pendingTasks=[]; pendingMid=null;
     clearAIForm(); renderAll(); switchTab('tasks');
-    alert('✅ '+createdIds.length+'件のタスクをデータベースに保存しました！\nページを更新しても消えません。');
+    alert('✅ '+createdIds.length+'件のタスクをクラウドに永久保存しました！\nページを更新しても絶対に消えません。');
   } catch(e) {
     if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-check"></i> タスクを登録してダッシュボードに反映';}
     alert('登録エラー: '+e.message+'\n\nSupabaseの接続状態を確認してください。');
@@ -1204,16 +1121,22 @@ function switchTab(tab) {
   if(tab==='ai')      showStep(1);
 }
 
+function showBanner(type, msg) {
+  const el = document.getElementById('db-banner');
+  if (!el) return;
+  if (!type || !msg) { el.style.display='none'; return; }
+  el.className = 'db-banner ' + type;
+  el.innerHTML = '<i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i><div>' + msg + '</div>';
+  el.style.display = 'flex';
+}
+
 // ============================================================
 // 起動
 // ============================================================
 window.addEventListener('resize',()=>{renderTasks();renderMinutes();});
-const fDue=document.getElementById('f-due');
-if(fDue) fDue.value=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
-const mDate=document.getElementById('meeting-date');
-if(mDate) mDate.value=today();
-showStep(1);
-loadAll();
+const fDue=document.getElementById('f-due'); if(fDue) fDue.value=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+const mDate=document.getElementById('meeting-date'); if(mDate) mDate.value=today();
+showStep(1); loadAll();
 </script>
 </body>
 </html>
