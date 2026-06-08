@@ -79,7 +79,7 @@ textarea:focus{outline:none;border-color:var(--main)}
 .form-row textarea{min-height:90px;resize:vertical}
 .form-row input:focus,.form-row select:focus,.form-row textarea:focus{outline:none;border-color:var(--main)}
 .spinner{display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
-.spinner-dark{display:inline-block;width:20px;height:20px;border:3px solid var(--main-light);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+.spinner-dark{display:inline-block;width:20px;height:20px;border:3px solid var(--main-light);border-top-color:var(--main);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .empty{text-align:center;padding:36px 16px;color:#aaa;font-size:14px}
 .modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(60,100,30,.4);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;overflow-y:auto;backdrop-filter:blur(2px)}
@@ -333,7 +333,7 @@ let pendingMid    = null;
 let dbOk          = false;
 
 // ============================================================
-// Supabase CRUD — 安全第一にリセット完了！
+// Supabase CRUD
 // ============================================================
 async function loadAll() {
   setSyncBadge('loading');
@@ -346,7 +346,6 @@ async function loadAll() {
     if (tr.error) throw new Error('task_list: ' + tr.error.message);
     if (mr.error) throw new Error('minutes_list: ' + mr.error.message);
 
-    // 💡 エラーの原因だった「.notes」を完全に排除し、安全にデータをマッピング
     tasks       = (tr.data || []).map(t => ({...t, due: t.due || ''}));
     minutesList = (mr.data || []).map(m => ({
       ...m,
@@ -554,15 +553,11 @@ function renderTasks() {
   }
 }
 
-// ============================================================
-// タスク詳細モーダル
-// ============================================================
 function openTask(id) {
   const t = tasks.find(x=>x.id===id); if (!t) return;
   const dl  = daysLabel(t.due, t.status);
   const ns  = t.status==='todo'?'progress':t.status==='progress'?'done':'todo';
   
-  // 💡 安全にメモを追記できる元のポップアップメモ形式に自動調整！
   let nl = '進行中にする';
   if (ns === 'progress') nl = '進行中にする(状況報告を入れる)';
   if (ns === 'done')     nl = '完了にする(完了報告を入れる)';
@@ -613,14 +608,12 @@ async function saveTaskEdit(id) {
   } catch(e) { alert('保存エラー: '+e.message); }
 }
 
-// 💡【安全なタイトル追記型の報告メモ機能に自動切り替え！】
 async function changeStatus(id, s) {
   const idx = tasks.findIndex(t=>t.id===id);
   if (idx === -1) return;
 
   let finalTitle = tasks[idx].title;
 
-  // 進行中にした時（進捗報告）
   if (s === 'progress') {
     const report = prompt("【進捗報告】現在の進捗や状況を入力してください：\n(例：元受担当の〇〇さんへ確認の書類を提出中)");
     if (report === null) return; 
@@ -629,7 +622,6 @@ async function changeStatus(id, s) {
     }
   }
   
-  // 完了にした時（完了報告）
   if (s === 'done') {
     const report = prompt("【完了報告】何をおこない、どう解決しましたか？実施内容を入力してください：\n(例：FAX送信し、電話にて受理されたことを確認)");
     if (report === null) return; 
