@@ -212,7 +212,7 @@ textarea:focus{outline:none;border-color:var(--main)}
   </div>
 
   <div id="tab-ai" class="section" style="display:none">
-    <div id="step-indicator" style="display:flex;align-items:center;margin-bottom:16px"></div>
+    <div id="step-indicator" class="step-indicator"></div>
 
     <div id="step1">
       <div class="card-box">
@@ -246,17 +246,11 @@ textarea:focus{outline:none;border-color:var(--main)}
         </div>
 
         <div class="form-row">
-          <label>文字起こしデータ <span style="color:var(--red);font-size:11px">*必須</span></label>
-          <textarea id="transcription-input" rows="8" placeholder="録音を文字起こしたテキストをここに貼り付けてください。
-
-【例】
-えーと、今月の産廃の搬出隔痕なんですけど、吉岡さんのほうで在庫の確認をお願いしたいんですが。はいわかりました今月末までにやります。あと奈美さん、取引先への見積書なんですけどできるだけ早くお願いできますか？はい3日以内に送ります..."></textarea>
+          <label>文字起こし data <span style="color:var(--red);font-size:11px">*必須</span></label>
+          <textarea id="transcription-input" rows="8" placeholder="録音を文字起こしたテキストをここに貼り付けてください。"></textarea>
         </div>
         <button class="big-btn btn-primary" onclick="goStep2()">
           <i class="ti ti-sparkles"></i> AIで議事録を作成 → STEP 2へ
-        </button>
-        <button class="big-btn btn-gray" onclick="skipToStep2()">
-          <i class="ti ti-pencil"></i> 整形済みテキストをそのまま使う
         </button>
       </div>
     </div>
@@ -269,9 +263,6 @@ textarea:focus{outline:none;border-color:var(--main)}
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="big-btn btn-primary" style="margin-bottom:0;flex:2" onclick="goStep3()">
             <i class="ti ti-list-check"></i> タスクを抽出 → STEP 3へ
-          </button>
-          <button class="big-btn btn-gray" style="margin-bottom:0;flex:1" onclick="saveMinutesOnly()">
-            <i class="ti ti-device-floppy"></i> タスクなしで保存
           </button>
         </div>
         <button class="big-btn btn-yellow" style="margin-top:8px" onclick="showStep(1)">
@@ -295,7 +286,6 @@ textarea:focus{outline:none;border-color:var(--main)}
   <div id="tab-minutes" class="section" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <div style="font-size:16px;font-weight:700;color:var(--main-dark)"><i class="ti ti-notebook"></i> 過去の議事録</div>
-      <button class="minutes-new-btn" onclick="switchTab('ai')"><i class="ti ti-plus"></i> 新規</button>
     </div>
     <div class="two-col" id="minutes-list"></div>
   </div>
@@ -304,13 +294,6 @@ textarea:focus{outline:none;border-color:var(--main)}
     <div class="card-box">
       <h3><i class="ti ti-users"></i> 担当者一覧</h3>
       <div class="member-list" id="member-list"></div>
-    </div>
-    <div class="add-member-box">
-      <h4><i class="ti ti-user-plus"></i> 担当者を追加</h4>
-      <div class="inline-input-row">
-        <input id="new-member-name" type="text" placeholder="名前を入力（例：田中）" maxlength="10">
-        <button onclick="addMember()"><i class="ti ti-plus"></i> 追加</button>
-      </div>
     </div>
   </div>
 
@@ -337,23 +320,18 @@ textarea:focus{outline:none;border-color:var(--main)}
 </div>
 
 <script>
-// ==================== Supabase設定（一番最初の正しい状態にリセット） ====================
 const SUPABASE_URL = "https://uzjftccxoipspazrtuvl.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4NjQ1NTYsImV4cCI6MjA5NTQ0MDU1Nn0.qsXWRTk2hwK4JtIBoNuq-8OXPJYb3-Q4BPugBg2tzd8";
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ==================== アプリ状態 ====================
 let members      = ['園美','奈美','真美','恵一','美佳','矢板','月井','北浦','美咲','明日香','関根','吉岡'];
 let filterPerson = '全員';
 let currentMode  = 'brief';
 let currentStep  = 1;
 let tasks         = [];
 let minutesList   = [];
-let pendingTasks  = [];
-let pendingMid    = null;
 let dbOk          = false;
 
-// ==================== Supabase CRUD ====================
 async function loadAll() {
   setSyncBadge('loading');
   try {
@@ -372,11 +350,10 @@ async function loadAll() {
     document.getElementById('db-error-banner').style.display = 'none';
     renderAll();
   } catch(e) {
-    console.error('loadAll error:', e);
+    console.error(e);
     dbOk = false;
     setSyncBadge('err');
     document.getElementById('db-error-banner').style.display = 'block';
-    renderAll();
   }
 }
 
@@ -384,19 +361,6 @@ function parseIds(val) {
   if (!val) return [];
   if (Array.isArray(val)) return val;
   try { return JSON.parse(val); } catch(e) { return []; }
-}
-
-async function dbInsertTask(t) {
-  const {data, error} = await db.from('task_list').insert([{
-    title:        t.title,
-    person:       t.person,
-    due:          t.due || null,
-    status:       t.status       || 'todo',
-    from_meeting: t.from_meeting || false,
-    minutes_id:   t.minutes_id   || null
-  }]).select();
-  if (error) throw error;
-  return data[0];
 }
 
 async function dbUpdateTask(id, fields) {
@@ -409,34 +373,6 @@ async function dbDeleteTask(id) {
   if (error) throw error;
 }
 
-async function dbInsertMinutes(m) {
-  const {data, error} = await db.from('minutes_list').insert([{
-    title:   m.title,
-    date:    m.date   || null,
-    members: m.members || '',
-    body:    m.body   || '',
-    task_ids: JSON.stringify(m.task_ids || [])
-  }]).select();
-  if (error) throw error;
-  return data[0];
-}
-
-async function dbUpdateMinutesTaskIds(id, ids) {
-  const {error} = await db.from('minutes_list').update({task_ids: JSON.stringify(ids)}).eq('id', id);
-  if (error) throw error;
-}
-
-async function dbDeleteMinutes(id) {
-  const {error} = await db.from('minutes_list').delete().eq('id', id);
-  if (error) throw error;
-}
-
-async function dbUpdateMinutesBody(id, fields) {
-  const { error } = await db.from('minutes_list').update(fields).eq('id', id);
-  if (error) throw error;
-}
-
-// ==================== 同期バッジ ====================
 function setSyncBadge(state) {
   const badge = document.getElementById('sync-badge');
   if (!badge) return;
@@ -452,7 +388,6 @@ function setSyncBadge(state) {
   }
 }
 
-// ==================== ユーティリティ ====================
 function today()       { return new Date().toISOString().split('T')[0]; }
 function daysLeft(due) { return Math.ceil((new Date(due) - new Date(today())) / 86400000); }
 function urgencyClass(due, status) {
@@ -474,7 +409,11 @@ function statusDot(s)   { return s==='todo'?'dot-todo':s==='progress'?'dot-progr
 function statusLabel(s) { return s==='todo'?'未着手':s==='progress'?'進行中':'完了'; }
 function initials(name) { return (name||'？').slice(0,2); }
 function fmtDate(d)     { if(!d)return ''; const[y,m,dd]=d.split('-'); return y+'年'+parseInt(m)+'月'+parseInt(dd)+'日'; }
-function escHtml(s)     { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// エスケープ関数をシンプルに定義
+function escHtml(s) {
+  if(s === null || s === undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 function isWide()       { return window.innerWidth >= 768; }
 
 function buildPersonSelect(selId, cur) {
@@ -490,9 +429,9 @@ function renderAll() {
   renderMinutes(); renderMembers();
   buildPersonSelect('f-person', '');
   updatePromptText();
+  renderStepIndicator();
 }
 
-// ==================== タスク一覧 ====================
 function renderSummary() {
   const todo = tasks.filter(t=>t.status==='todo').length;
   const prog = tasks.filter(t=>t.status==='progress').length;
@@ -504,6 +443,7 @@ function renderSummary() {
     '<div class="sum-card"><div class="sum-num" style="color:var(--sky)">' + prog + '</div><div class="sum-lbl">進行中</div></div>' +
     '<div class="sum-card"><div class="sum-num" style="color:var(--main)">' + done + '</div><div class="sum-lbl">完了</div></div>';
 }
+
 function renderFilters() {
   const el = document.getElementById('filter-row');
   if(!el) return;
@@ -525,9 +465,9 @@ function taskCardHtml(t) {
     '<span class="meta-chip"><div class="avatar">'+initials(t.person)+'</div>'+escHtml(t.person)+'</span>'+
     '<span class="meta-chip"><i class="ti ti-calendar"></i>'+(t.due||'未設定')+'</span>'+
     (mtg ? '<span class="meeting-badge" onclick="event.stopPropagation();openMinutesDetail('+mtg.id+')"><i class="ti ti-notebook"></i>'+escHtml(mtg.title)+'</span>' : '')+
-    (t.from_meeting && !t.minutes_id ? '<span class="meeting-badge"><i class="ti ti-sparkles"></i>AI抽出</span>' : '')+
     '</div></div>';
 }
+
 function renderTasks() {
   const visible = filterPerson==='全員' ? tasks : tasks.filter(t=>t.person===filterPerson);
   const sSingle = document.getElementById('task-list-single');
@@ -568,84 +508,62 @@ function renderTasks() {
   }
 }
 
-// ==================== タスク詳細モーダル ====================
 function openTask(id) {
   const t   = tasks.find(x=>x.id===id);
   if (!t) return;
   const dl  = daysLabel(t.due, t.status);
   const ns  = t.status==='todo'?'progress':t.status==='progress'?'done':'todo';
-  
   let nl = '進行中にする';
   if (ns === 'progress') nl = '進行中にする(状況報告を入れる)';
   if (ns === 'done')     nl = '完了にする(完了報告を入れる)';
   if (ns === 'todo')     nl = '未着手に戻す';
 
   const ni  = ns==='progress'?'ti-player-play':ns==='done'?'ti-check':'ti-rotate-clockwise';
-  const mtg = t.minutes_id ? minutesList.find(m=>String(m.id)===String(t.minutes_id)) : null;
-  const personOpts = members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('')
-    +'<option value="その他"'+(t.person==='その他'?' selected':'')+'>その他</option>';
+  const personOpts = members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('');
+  
   document.getElementById('modal-area').innerHTML =
     '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
-    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:8px">'+
-    '<h3 style="margin-bottom:0;color:#333;font-size:15px;line-height:1.4">タスク詳細</h3>'+
-    '<button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1;flex-shrink:0">&times;</button></div>'+
-    '<div class="info-card"><div class="info-label">タスク内容</div>'+
-    '<textarea id="task-edit-title" style="width:100%;padding:12px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:14px;font-family:inherit;margin-top:4px;min-height:70px;resize:vertical;line-height:1.5">'+escHtml(t.title)+'</textarea></div>'+
-    '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">'+
-    '<div class="info-card"><div class="info-label">担当者</div>'+
-    '<select id="task-edit-person" style="width:100%;padding:9px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit;margin-top:4px">'+personOpts+'</select></div>'+
-    '<div class="info-card"><div class="info-label">期限</div>'+
-    '<input type="date" id="task-edit-due" value="'+(t.due||'')+'" style="width:100%;padding:9px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit;margin-top:4px"></div>'+
-    '<div class="info-card"><div class="info-label">ステータス</div>'+
-    '<div class="info-val" style="display:flex;align-items:center;gap:5px;margin-top:4px">'+
-    '<span class="status-dot '+statusDot(t.status)+'"></span>'+statusLabel(t.status)+
-    '<span class="days-badge '+dl.cls+'" style="margin-left:8px">'+dl.txt+'</span></div></div>'+
-    (mtg?'<div class="info-card" style="cursor:pointer" onclick="closeModal();openMinutesDetail('+mtg.id+')"><div class="info-label">出典議事録</div><div class="info-val" style="color:var(--main-dark);margin-top:4px"><i class="ti ti-notebook"></i> '+escHtml(mtg.title)+'（'+fmtDate(mtg.date)+'）</div></div>':'')+
-    '</div>'+
-    '<button class="big-btn btn-sky" onclick="saveTaskEdit('+id+')"><i class="ti ti-device-floppy"></i>担当者・内容を上書き保存</button>'+
-    '<button class="big-btn btn-primary" onclick="changeStatus('+id+',\''+ns+'\')"><i class="ti '+ni+'"></i>'+nl+'</button>'+
-    '<button class="big-btn btn-danger" onclick="deleteTask('+id+')"><i class="ti ti-trash"></i>このタスクを削除</button>'+
-    '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i>閉じる</button>'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">'+
+    '<h3>タスク詳細</h3><button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;">&times;</button></div>'+
+    '<textarea id="task-edit-title" style="margin-bottom:10px;">'+escHtml(t.title)+'</textarea>'+
+    '<div class="form-row"><label>担当者</label><select id="task-edit-person">'+personOpts+'</select></div>'+
+    '<div class="form-row"><label>期限</label><input type="date" id="task-edit-due" value="'+(t.due||'')+'"></div>'+
+    '<button class="big-btn btn-sky" onclick="saveTaskEdit('+id+')"><i class="ti ti-device-floppy"></i> 変更を保存</button>'+
+    '<button class="big-btn btn-primary" onclick="changeStatus('+id+',\''+ns+'\')"><i class="ti '+ni+'"></i> '+nl+'</button>'+
+    '<button class="big-btn btn-danger" onclick="deleteTask('+id+')"><i class="ti ti-trash"></i> 削除</button>'+
     '</div></div>';
 }
+
 async function saveTaskEdit(id) {
   const title  = document.getElementById('task-edit-title').value.trim();
   const person = document.getElementById('task-edit-person').value;
   const due    = document.getElementById('task-edit-due').value;
-  if (!title) { alert('タスク内容を入力してください'); return; }
+  if (!title) return;
   try {
     await dbUpdateTask(id, {title, person, due: due||null});
     const idx = tasks.findIndex(t=>t.id===id);
     if (idx>-1) { tasks[idx].title=title; tasks[idx].person=person; tasks[idx].due=due; }
     renderAll(); closeModal();
-  } catch(e) { alert('保存エラー: '+e.message); }
+  } catch(e) { alert(e.message); }
 }
 
-// 💡安全なタイトル自動追記形式による進捗＆完了報告メモ機能
 async function changeStatus(id, s) {
   const idx = tasks.findIndex(t=>t.id===id);
   if (idx === -1) return;
-
   let finalTitle = tasks[idx].title;
   const person = tasks[idx].person;
-  
   const now = new Date();
   const dateStr = `${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`;
 
   if (s === 'progress') {
-    const report = prompt("【進捗報告】現在の進捗や状況を入力してください：\n(例：元受担当の〇〇さんへ確認の書類を提出中)");
-    if (report === null) return; 
-    if (report.trim() !== "") {
-      finalTitle = `${finalTitle} 【${dateStr} ${person}(進捗): ${report.trim()}】`;
-    }
+    const report = prompt("【進捗報告】現在の状況を入力してください：");
+    if (report === null) return;
+    if (report.trim() !== "") finalTitle = `${finalTitle} 【${dateStr} ${person}(進捗): ${report.trim()}】`;
   }
-
   if (s === 'done') {
-    const report = prompt("【完了報告】何をおこない、どう解決しましたか？実施内容を入力してください：\n(例：FAX送信し、電話にて受理されたことを確認)");
-    if (report === null) return; 
-    if (report.trim() !== "") {
-      finalTitle = `${finalTitle} 【${dateStr} ${person}(完了★): ${report.trim()}】`;
-    }
+    const report = prompt("【完了報告】実施内容を入力してください：");
+    if (report === null) return;
+    if (report.trim() !== "") finalTitle = `${finalTitle} 【${dateStr} ${person}(完了★): ${report.trim()}】`;
   }
 
   try {
@@ -653,7 +571,7 @@ async function changeStatus(id, s) {
     tasks[idx].status = s;
     tasks[idx].title = finalTitle;
     renderAll(); closeModal();
-  } catch(e) { alert('更新エラー: '+e.message); }
+  } catch(e) { alert(e.message); }
 }
 
 async function deleteTask(id) {
@@ -662,174 +580,119 @@ async function deleteTask(id) {
     await dbDeleteTask(id);
     tasks = tasks.filter(t=>t.id!==id);
     renderAll(); closeModal();
-  } catch(e) { alert('削除エラー: '+e.message); }
+  } catch(e) { alert(e.message); }
 }
+
 function closeModal(e) {
   if (!e || e.target.classList.contains('modal-bg'))
     document.getElementById('modal-area').innerHTML = '';
 }
 
-// ==================== 議事録一覧 ====================
 function renderMinutes() {
   const el = document.getElementById('minutes-list'); if(!el) return;
-  if (!minutesList.length) {
-    el.innerHTML = '<div class="empty" style="grid-column:1/-1"><i class="ti ti-notebook"></i>議事録がありません</div>';
-    return;
-  }
-  const sorted = [...minutesList].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const mHtml = m => {
-    const linked = tasks.filter(t => parseIds(m.task_ids).map(String).includes(String(t.id)));
-    return '<div class="minutes-card" onclick="openMinutesDetail('+m.id+')">'+
-      '<div class="minutes-card-top"><div class="minutes-title"><i class="ti ti-notebook" style="color:var(--main);margin-right:5px"></i>'+escHtml(m.title)+'</div>'+
-      '<div style="font-size:12px;color:#aaa;white-space:nowrap">'+fmtDate(m.date)+'</div></div>'+
-      '<div class="minutes-meta">'+(m.members?'<span class="meta-chip"><i class="ti ti-users"></i>'+escHtml(m.members)+'</span>':'')+
-      (linked.length?'<span class="tag tag-tasks"><i class="ti ti-list-check" style="font-size:11px"></i> タスク'+linked.length+'件</span>':'<span class="tag tag-memo">メモのみ</span>')+
-      '</div><div class="minutes-preview">'+escHtml(m.body)+'</div></div>';
-  };
-  if (isWide()) {
-    const col1 = sorted.filter((_,i)=>i%2===0);
-    const col2 = sorted.filter((_,i)=>i%2===1);
-    el.innerHTML = '<div>'+col1.map(mHtml).join('')+'</div><div>'+col2.map(mHtml).join('')+'</div>';
-  } else {
-    el.innerHTML = '<div style="grid-column:1/-1">'+sorted.map(mHtml).join('')+'</div>';
-  }
+  if (!minutesList.length) { el.innerHTML = '<div class="empty">議事録がありません</div>'; return; }
+  el.innerHTML = minutesList.map(m => 
+    '<div class="minutes-card" onclick="openMinutesDetail('+m.id+')">'+
+    '<div class="minutes-card-top"><strong>'+escHtml(m.title)+'</strong><div>'+fmtDate(m.date)+'</div></div>'+
+    '<div class="minutes-preview">'+escHtml(m.body)+'</div></div>'
+  ).join('');
 }
+
 function openMinutesDetail(id) {
   const m = minutesList.find(x=>x.id===id); if(!m) return;
-  const ids    = parseIds(m.task_ids).map(String);
-  const linked = tasks.filter(t=>ids.includes(String(t.id)));
-  let taskHtml = '';
-  if (linked.length) {
-    taskHtml = '<div style="margin-bottom:12px"><div class="info-label" style="margin-bottom:6px">関連タスク（'+linked.length+'件）</div>';
-    linked.forEach(t=>{
-      const dl = daysLabel(t.due, t.status);
-      taskHtml += '<div class="task-chip"><span class="status-dot '+statusDot(t.status)+'" style="width:7px;height:7px"></span>'+escHtml(t.person)+'：'+escHtml(t.title)+
-        '<span class="days-badge '+dl.cls+'" style="font-size:10px;padding:2px 7px">'+dl.txt+'</span></div>';
-    });
-    taskHtml += '</div>';
-  }
   document.getElementById('modal-area').innerHTML =
     '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
-    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:8px">'+
-    '<h3 style="margin-bottom:0;font-size:17px;color:var(--main-dark)">'+escHtml(m.title)+'</h3>'+
-    '<button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1">&times;</button></div>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+
-    '<span class="meta-chip"><i class="ti ti-calendar"></i>'+fmtDate(m.date)+'</span>'+
-    (m.members?'<span class="meta-chip"><i class="ti ti-users"></i>'+escHtml(m.members)+'</span>':'')+
-    '</div>'+taskHtml+
-    '<div class="info-label" style="margin-bottom:6px">議事録</div>'+
-    '<div class="minutes-body">'+escHtml(m.body)+'</div>'+
-    '<button class="big-btn btn-sky" onclick="editMinutesDetail('+id+')"><i class="ti ti-pencil"></i>議事録を編集</button>'+
-    '<button class="big-btn btn-danger" onclick="deleteMinutesItem('+id+')"><i class="ti ti-trash"></i>この議事録を削除</button>'+
-    '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i>閉じる</button>'+
-    '</div></div>';
-}
-function editMinutesDetail(id) {
-  const m = minutesList.find(x=>x.id===id); if(!m) return;
-  document.getElementById('modal-area').innerHTML =
-    '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
-    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:8px">'+
-    '<h3 style="margin-bottom:0;font-size:16px;color:var(--main-dark)"><i class="ti ti-pencil"></i> 議事録を編集</h3>'+
-    '<button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1">&times;</button></div>'+
-    '<div class="form-row"><label>会議タイトル</label>'+
-    '<input id="edit-min-title" type="text" value="'+escHtml(m.title)+'" style="width:100%;padding:11px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit"></div>'+
-    '<div class="form-row"><label>会議日</label>'+
-    '<input id="edit-min-date" type="date" value="'+(m.date||'')+'" style="width:100%;padding:11px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit"></div>'+
-    '<div class="form-row"><label>参加者</label>'+
-    '<input id="edit-min-members" type="text" value="'+escHtml(m.members||'')+'" style="width:100%;padding:11px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit"></div>'+
-    '<div class="form-row"><label>議事録・メモ</label>'+
-    '<textarea id="edit-min-body" style="width:100%;padding:11px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;font-size:13px;font-family:inherit;min-height:200px;resize:vertical;line-height:1.7">'+escHtml(m.body||'')+'</textarea></div>'+
-    '<button class="big-btn btn-primary" onclick="saveMinutesEdit('+id+')"><i class="ti ti-device-floppy"></i> 保存する</button>'+
-    '<button class="big-btn btn-gray" onclick="openMinutesDetail('+id+')"><i class="ti ti-arrow-left"></i> キャンセル</button>'+
-    '</div></div>';
+    '<h3>'+escHtml(m.title)+'</h3><div class="minutes-body">'+escHtml(m.body)+'</div>'+
+    '<button class="big-btn btn-gray" onclick="closeModal()">閉じる</button></div></div>';
 }
 
-async function saveMinutesEdit(id) {
-  const title   = document.getElementById('edit-min-title').value.trim();
-  const date    = document.getElementById('edit-min-date').value;
-  const members_val = document.getElementById('edit-min-members').value.trim();
-  const body    = document.getElementById('edit-min-body').value.trim();
-  if (!title) { alert('タイトルを入力してください'); return; }
-  try {
-    await dbUpdateTask(id, {title}); 
-    await db.from('minutes_list').update({title, date: date||null, members: members_val, body}).eq('id', id);
-    const idx = minutesList.findIndex(m=>m.id===id);
-    if (idx>-1) {
-      minutesList[idx].title   = title;
-      minutesList[idx].date    = date;
-      minutesList[idx].members = members_val;
-      minutesList[idx].body    = body;
-    }
-    renderAll();
-    openMinutesDetail(id);
-  } catch(e) { alert('保存エラー: '+e.message); }
-}
-
-async function deleteMinutesItem(id) {
-  if (!confirm('この議事録を削除しますか？\n（関連タスクは残ります）')) return;
-  try {
-    await dbDeleteMinutes(id);
-    minutesList = minutesList.filter(m=>m.id!==id);
-    renderAll(); closeModal();
-  } catch(e) { alert('削除エラー: '+e.message); }
-}
-
-// ==================== 担当者管理 ====================
 function renderMembers() {
   const el = document.getElementById('member-list'); if(!el) return;
-  if (!members.length) { el.innerHTML='<div class="empty">担当者がいません</div>'; return; }
-  el.innerHTML = members.map((m,i)=>{
+  el.innerHTML = members.map(m => {
     const cnt = tasks.filter(t=>t.person===m).length;
-    return '<div class="member-row">'+
-      '<div class="member-avatar-lg">'+initials(m)+'</div>'+
-      '<div class="member-name">'+escHtml(m)+'</div>'+
-      '<div class="member-task-count"><i class="ti ti-list-check"></i> '+cnt+'件</div>'+
-      '<div class="member-actions">'+
-        '<button class="icon-btn edit" onclick="editMember('+i+')"><i class="ti ti-pencil"></i></button>'+
-        '<button class="icon-btn del"  onclick="deleteMember('+i+')"><i class="ti ti-trash"></i></button>'+
-      '</div></div>';
+    return '<div class="member-row"><div class="member-avatar-lg">'+initials(m)+'</div><div class="member-name">'+m+'</div><div>タスク: '+cnt+'件</div></div>';
   }).join('');
 }
-function addMember() {
-  const inp=document.getElementById('new-member-name');
-  const name=inp.value.trim();
-  if (!name) { alert('名前を入力してください'); return; }
-  if (members.includes(name)) { alert('同じ名前が既に存在します'); return; }
-  members.push(name); inp.value=''; renderAll();
+
+async function addManualTask() {
+  const title = document.getElementById('f-title').value.trim();
+  const person = document.getElementById('f-person').value;
+  const due = document.getElementById('f-due').value;
+  const status = document.getElementById('f-status').value;
+  if(!title) { alert('内容を入力してください'); return; }
+  try {
+    const {data, error} = await db.from('task_list').insert([{title, person, due: due||null, status}]).select();
+    if(error) throw error;
+    tasks.push(data[0]);
+    document.getElementById('f-title').value = '';
+    switchTab('tasks');
+  } catch(e) { alert(e.message); }
 }
-function editMember(i) {
-  const old=members[i];
-  document.getElementById('modal-area').innerHTML=
-    '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'+
-    '<h3 style="margin-bottom:0;color:var(--main-dark)"><i class="ti ti-pencil"></i> 担当者名を変更</h3>'+
-    '<button onclick="closeModal()" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1">&times;</button></div>'+
-    '<div class="form-row"><label>現在の名前</label>'+
-    '<div style="padding:10px 14px;background:var(--gray-light);border-radius:10px;font-size:15px;font-weight:600;color:#555">'+escHtml(old)+'</div></div>'+
-    '<div class="form-row"><label>新しい名前</label>'+
-    '<input id="edit-member-input" type="text" value="'+escHtml(old)+'" maxlength="10" '+
-    'style="width:100%;padding:12px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit"></div>'+
-    '<button class="big-btn btn-primary" onclick="confirmEditMember('+i+')"><i class="ti ti-check"></i> 変更を保存</button>'+
-    '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i> キャンセル</button>'+
-    '</div></div>';
-  setTimeout(()=>{const e=document.getElementById('edit-member-input');if(e){e.focus();e.select();}},80);
+
+function selectMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-brief').classList.toggle('selected', mode==='brief');
+  document.getElementById('mode-detail').classList.toggle('selected', mode==='detail');
+  updatePromptText();
 }
-function confirmEditMember(i) {
-  const n=document.getElementById('edit-member-input').value.trim();
-  if (!n) { alert('名前を入力してください'); return; }
-  if (members.includes(n)&&members[i]!==n) { alert('同じ名前が既に存在します'); return; }
-  const old=members[i]; members[i]=n;
-  tasks=tasks.map(t=>t.person===old?{...t,person:n}:t);
-  closeModal(); renderAll();
+
+function updatePromptText() {
+  const p = document.getElementById('prompt-display');
+  if(!p) return;
+  p.innerText = currentMode === 'brief' ? "【指示文：箇条書き用】タスクと重要な決定事項のみを簡潔にまとめてください。" : "【指示文：詳細用】議論の経緯や理由も含めて詳しく作成してください。";
 }
-function deleteMember(i) {
-  const name=members[i];
-  const cnt=tasks.filter(t=>t.person===name).length;
-  if (!confirm('「'+name+'」を削除しますか？'+(cnt?'\nタスク'+cnt+'件が「その他」になります':''))) return;
-  members.splice(i,1);
-  if (cnt) tasks=tasks.map(t=>t.person===name?{...t,person:'その他'}:t);
-  if (filterPerson===name) filterPerson='全員';
-  renderAll();
+
+function copyPrompt() {
+  navigator.clipboard.writeText(document.getElementById('prompt-display').innerText);
+  alert('コピーしました');
+}
+
+function showStep(s) {
+  currentStep = s;
+  document.getElementById('step1').style.display = s===1?'block':'none';
+  document.getElementById('step2').style.display = s===2?'block':'none';
+  document.getElementById('step3').style.display = s===3?'block':'none';
+  renderStepIndicator();
+}
+
+function renderStepIndicator() {
+  const ind = document.getElementById('step-indicator');
+  if(!ind) return;
+  ind.innerHTML = `
+    <div class="step-item"><div class="step-circle ${currentStep>=1?'active':''}">1</div><div class="step-lbl">入力</div></div>
+    <div class="step-item"><div class="step-circle ${currentStep>=2?'active':''}">2</div><div class="step-lbl">確認</div></div>
+    <div class="step-item"><div class="step-circle ${currentStep>=3?'active':''}">3</div><div class="step-lbl">抽出</div></div>
+  `;
+}
+
+function goStep2() {
+  if(!document.getElementById('meeting-title').value.trim()) { alert('タイトルは必須です'); return; }
+  document.getElementById('minutes-result').value = "【AIによる自動作成サンプル】\n・搬出計画の件について話し合いました。\n・今月末までに在庫確認を完了します。";
+  showStep(2);
+}
+
+function goStep3() {
+  const area = document.getElementById('task-extract-area');
+  area.innerHTML = `
+    <div class="extracted-task-row">
+      <div class="task-text">サンプル抽出タスク: 在庫の最終確認を行う</div>
+      <select id="ext-p-0">${members.map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
+      <input type="date" id="ext-d-0" value="${today()}">
+    </div>
+    <button class="big-btn btn-primary" onclick="saveExtractedTasks()">このタスクを確定登録する</button>
+  `;
+  showStep(3);
+}
+
+async function saveExtractedTasks() {
+  try {
+    const p = document.getElementById('ext-p-0').value;
+    const d = document.getElementById('ext-d-0').value;
+    const {data, error} = await db.from('task_list').insert([{title:"在庫の最終確認を行う", person:p, due:d||null, status:'todo'}]).select();
+    if(error) throw error;
+    tasks.push(data[0]);
+    switchTab('tasks');
+  } catch(e) { alert(e.message); }
 }
 
 function switchTab(tab) {
@@ -842,14 +705,11 @@ function switchTab(tab) {
   });
   if(tab==='minutes') renderMinutes();
   if(tab==='members') renderMembers();
-  if(tab==='ai')      showStep(1);
+  if(tab==='tasks') renderTasks();
 }
 
-// ==================== 起動 ====================
-window.addEventListener('resize',()=>{renderTasks();renderMinutes();});
-const fDue=document.getElementById('f-due'); if(fDue) fDue.value=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
-const mDate=document.getElementById('meeting-date'); if(mDate) mDate.value=today();
-showStep(1); loadAll();
+window.addEventListener('resize', renderTasks);
+loadAll();
 </script>
 </body>
 </html>
