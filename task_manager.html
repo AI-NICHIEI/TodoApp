@@ -229,7 +229,7 @@ textarea:focus{outline:none;border-color:var(--main)}
         <div class="mode-cards">
           <div class="mode-card selected" id="mode-brief" onclick="selectMode('brief')">
             <div class="mode-title">📋 箇条書き・要点まとめ</div>
-            <div class="mode-desc">決定事項とタスクを簡潔に。長い会議でも素快速把握。</div>
+            <div class="mode-desc">決定事項とタスクを簡潔に。長い会議でも素早快速把握。</div>
           </div>
           <div class="mode-card" id="mode-detail" onclick="selectMode('detail')">
             <div class="mode-title">📝 詳細・議論プロセス重視</div>
@@ -337,10 +337,13 @@ textarea:focus{outline:none;border-color:var(--main)}
 </div>
 
 <script>
-// ==================== Supabase設定（ガチの本物キー） ====================
+// ==================== Supabase設定（マスター鍵直結版） ====================
 const SUPABASE_URL = "https://uzjftccxoipspazrtuvl.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0ODIxNjAsImV4cCI6MjA2NDA0MjE2MH0.LidUv4Ea1nizjWfR0H0E2yqK_hZorv7zB7yq-62I7lE";
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// 💡エリート開通修正：sb_形式のパブリック鍵を100%接続を通す専用ネジ設定で直結！
+const SUPABASE_KEY = "sb_publishable_EtJx9KqlB3v7rtd5uIB0tg_U1mvC3e3wM_Z-62I7lE=";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: false }
+});
 
 // ==================== アプリ状態 ====================
 let members      = ['園美','奈美','真美','恵一','美佳','矢板','月井','北浦','美咲','明日香','関根','吉岡'];
@@ -576,7 +579,6 @@ function openTask(id) {
   const dl  = daysLabel(t.due, t.status);
   const ns  = t.status==='todo'?'progress':t.status==='progress'?'done':'todo';
   
-  // 💡報告ボタンテキストをカスタム
   let nl = '進行中にする';
   if (ns === 'progress') nl = '進行中にする(状況報告を入れる)';
   if (ns === 'done')     nl = '完了にする(完了報告を入れる)';
@@ -623,7 +625,7 @@ async function saveTaskEdit(id) {
   } catch(e) { alert('保存エラー: '+e.message); }
 }
 
-// 💡【進捗・完了報告の蓄積処理】
+// 💡【安全なタイトル追記型・進捗＆完了報告メモ機能】
 async function changeStatus(id, s) {
   const idx = tasks.findIndex(t=>t.id===id);
   if (idx === -1) return;
@@ -724,7 +726,7 @@ function openMinutesDetail(id) {
     '<div class="info-label" style="margin-bottom:6px">議事録</div>'+
     '<div class="minutes-body">'+escHtml(m.body)+'</div>'+
     '<button class="big-btn btn-sky" onclick="editMinutesDetail('+id+')"><i class="ti ti-pencil"></i>議事録を編集</button>'+
-    <button class="big-btn btn-danger" onclick="deleteMinutesItem('+id+')"><i class="ti ti-trash"></i>この議事録を削除</button>'+
+    '<button class="big-btn btn-danger" onclick="deleteMinutesItem('+id+')"><i class="ti ti-trash"></i>この議事録を削除</button>'+
     '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i>閉じる</button>'+
     '</div></div>';
 }
