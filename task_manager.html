@@ -229,7 +229,7 @@ textarea:focus{outline:none;border-color:var(--main)}
         <div class="mode-cards">
           <div class="mode-card selected" id="mode-brief" onclick="selectMode('brief')">
             <div class="mode-title">📋 箇条書き・要点まとめ</div>
-            <div class="mode-desc">決定事項とタスクを簡潔に。長い会議でも素早快速把握。</div>
+            <div class="mode-desc">決定事項とタスクを簡潔に。長い会議でも素早く把握。</div>
           </div>
           <div class="mode-card" id="mode-detail" onclick="selectMode('detail')">
             <div class="mode-title">📝 詳細・議論プロセス重視</div>
@@ -337,13 +337,10 @@ textarea:focus{outline:none;border-color:var(--main)}
 </div>
 
 <script>
-// ==================== Supabase設定（マスター鍵直結版） ====================
+// ==================== Supabase設定（一番最初の正しい状態にリセット） ====================
 const SUPABASE_URL = "https://uzjftccxoipspazrtuvl.supabase.co";
-// 💡エリート開通修正：sb_形式のパブリック鍵を100%接続を通す専用ネジ設定で直結！
-const SUPABASE_KEY = "sb_publishable_EtJx9KqlB3v7rtd5uIB0tg_U1mvC3e3wM_Z-62I7lE=";
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: false }
-});
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4NjQ1NTYsImV4cCI6MjA5NTQ0MDU1Nn0.qsXWRTk2hwK4JtIBoNuq-8OXPJYb3-Q4BPugBg2tzd8";
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ==================== アプリ状態 ====================
 let members      = ['園美','奈美','真美','恵一','美佳','矢板','月井','北浦','美咲','明日香','関根','吉岡'];
@@ -434,7 +431,6 @@ async function dbDeleteMinutes(id) {
   if (error) throw error;
 }
 
-// 💡議事録編集をエラーなしで処理するための関数を補填
 async function dbUpdateMinutesBody(id, fields) {
   const { error } = await db.from('minutes_list').update(fields).eq('id', id);
   if (error) throw error;
@@ -625,7 +621,7 @@ async function saveTaskEdit(id) {
   } catch(e) { alert('保存エラー: '+e.message); }
 }
 
-// 💡【安全なタイトル追記型・進捗＆完了報告メモ機能】
+// 💡安全なタイトル自動追記形式による進捗＆完了報告メモ機能
 async function changeStatus(id, s) {
   const idx = tasks.findIndex(t=>t.id===id);
   if (idx === -1) return;
@@ -636,7 +632,6 @@ async function changeStatus(id, s) {
   const now = new Date();
   const dateStr = `${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`;
 
-  // 進行中にしたとき（進捗報告）
   if (s === 'progress') {
     const report = prompt("【進捗報告】現在の進捗や状況を入力してください：\n(例：元受担当の〇〇さんへ確認の書類を提出中)");
     if (report === null) return; 
@@ -645,7 +640,6 @@ async function changeStatus(id, s) {
     }
   }
 
-  // 完了にしたとき（完了報告）
   if (s === 'done') {
     const report = prompt("【完了報告】何をおこない、どう解決しましたか？実施内容を入力してください：\n(例：FAX送信し、電話にて受理されたことを確認)");
     if (report === null) return; 
@@ -838,377 +832,6 @@ function deleteMember(i) {
   renderAll();
 }
 
-// ==================== AI議事録 3ステップ ====================
-function showStep(n) {
-  currentStep=n;
-  [1,2,3].forEach(s=>{
-    const el=document.getElementById('step'+s);
-    if(el) el.style.display=s===n?'block':'none';
-  });
-  renderStepIndicator(n);
-}
-function renderStepIndicator(step) {
-  const steps=[{n:1,label:'文字起こし'},{n:2,label:'議事録確認'},{n:3,label:'タスク登録'}];
-  const el=document.getElementById('step-indicator'); if(!el) return;
-  el.innerHTML=steps.map(s=>{
-    const cls=s.n<step?'done':s.n===step?'active':'';
-    const icon=s.n<step?'<i class="ti ti-check"></i>':String(s.n);
-    return '<div class="step-item">'+
-      '<div class="step-circle '+cls+'">'+icon+'</div>'+
-      '<div class="step-lbl '+cls+'">'+s.label+'</div></div>';
-  }).join('');
-}
-function selectMode(mode) {
-  currentMode=mode;
-  document.getElementById('mode-brief').classList.toggle('selected', mode==='brief');
-  document.getElementById('mode-detail').classList.toggle('selected', mode==='detail');
-  updatePromptText();
-}
-function updatePromptText() {
-  const title=(document.getElementById('meeting-title')||{}).value?.trim()||'無題の会議';
-  const ms=members.join('、');
-  const mt=currentMode==='brief'
-    ?'箇条書きで、要点を絞って簡潔にまとめてください。決定事項・担当者・期限を中心に整理してください。'
-    :'議論のプロセスが詳細にわかるように丁寧にまとめてください。話し合いの経緯・背景・意見の流れも含めて記録してください。';
-  const prompt=
-    '以下の会議の文字起こしデータを議事録にまとめてください。\n\n'+
-    '【会議名】'+title+'\n【参加者候補】'+ms+'\n\n'+
-    '【指示】\n'+mt+'\n'+
-    '- 話し言葉やフィラー（えーと、あのー等）は除去してください\n'+
-    '- 誰が何をいつまでにやるかを明確に記録してください\n'+
-    '- 「誰：タスク内容（期限）」の形式でアクションアイテムをまとめてください\n\n'+
-    '【文字起こしデータ】\n（ここに文字起こしテキストを貼り付けてください）';
-  const el=document.getElementById('prompt-display'); if(el) el.innerText=prompt;
-}
-function copyPrompt() {
-  const text=document.getElementById('prompt-display').innerText;
-  navigator.clipboard.writeText(text).then(()=>alert('指示文をコピーしました！\nChatGPT等に貼り付けて使ってください。'));
-}
-function goStep2() {
-  const title=document.getElementById('meeting-title').value.trim();
-  const body=document.getElementById('transcription-input').value.trim();
-  if (!title) { alert('会議タイトルを入力してください'); return; }
-  if (!body)  { alert('文字起こしデータを入力してください'); return; }
-  document.getElementById('minutes-result').value=formatMinutes(body,title,currentMode);
-  showStep(2);
-}
-function skipToStep2() {
-  if (!document.getElementById('meeting-title').value.trim()) { alert('会議タイトルを入力してください'); return; }
-  document.getElementById('minutes-result').value=document.getElementById('transcription-input').value.trim();
-  showStep(2);
-}
-function formatMinutes(text,title,mode) {
-  const date=document.getElementById('meeting-date').value;
-  const mems=document.getElementById('meeting-members').value.trim();
-  let cleaned=text
-    .replace(/えーと[、,\s]*/g,'').replace(/あのー?[、,\s]*/g,'').replace(/えー[、,\s]*/g,'')
-    .replace(/まあ[、,\s]*/g,'').replace(/そのー?[、,\s]*/g,'').replace(/\s+/g,' ').trim();
-  const sentences=cleaned.split(/[。\n]/).map(s=>s.trim()).filter(s=>s.length>3);
-  const av=['作成','提出','送付','発注','確認','完了','報告','連絡','対応','手配','準備','整備','調整','集計','検討','実施','依頼','申請','お願い'];
-  const ts=sentences.filter(s=>av.some(v=>s.includes(v)));
-  const os=sentences.filter(s=>!av.some(v=>s.includes(v)));
-  let r='【'+title+'】議事録\n';
-  if(date) r+='日時：'+fmtDate(date)+'\n';
-  if(mems) r+='参加者：'+mems+'\n';
-  r+='\n';
-  if(mode==='brief'){
-    r+='■ 決定事項・アクションアイテム\n';
-    (ts.length?ts:['（アクションアイテムが検出されませんでした）']).slice(0,15).forEach(s=>{r+='・'+s+'\n';});
-    if(os.length){r+='\n■ その他議題\n';os.slice(0,8).forEach(s=>{r+='・'+s+'\n';});}
-  } else {
-    r+='■ 議事内容\n\n';
-    sentences.slice(0,30).forEach(s=>{r+=s+'。\n';});
-    r+='\n■ 決定事項・アクションアイテム\n';
-    (ts.length?ts:['（アクションアイテムが検出されませんでした）']).slice(0,15).forEach(s=>{r+='・'+s+'\n';});
-  }
-  return r;
-}
-
-async function goStep3() {
-  const body=document.getElementById('minutes-result').value.trim();
-  const title=document.getElementById('meeting-title').value.trim();
-  const date=document.getElementById('meeting-date').value;
-  const mems=document.getElementById('meeting-members').value.trim();
-  if (!body) { alert('議事録が空です'); return; }
-  try {
-    const saved=await dbInsertMinutes({title,date:date||today(),members:mems,body,task_ids:[]});
-    pendingMid=saved.id;
-    minutesList.push({...saved, task_ids:[]});
-  } catch(e) {
-    alert('議事録の保存に失敗しました: '+e.message+'\n\nSupabaseの接続を確認してください。');
-    return;
-  }
-  pendingTasks=extractTasksFromText(body);
-  showStep(3);
-  renderTaskExtract(pendingTasks, pendingMid);
-}
-
-function extractTasksFromText(text) {
-  const results = [];
-  const defDue = new Date(Date.now()+7*86400000).toISOString().split('T')[0];
-
-  const duePats = [
-    {r:/(\d+)月(\d+)日/,    fn:function(m){var y=new Date().getFullYear();return new Date(y,parseInt(m[1])-1,parseInt(m[2])).toISOString().split('T')[0];}},
-    {r:/今月末/,             fn:function(){var d=new Date();d.setMonth(d.getMonth()+1,0);return d.toISOString().split('T')[0];}},
-    {r:/来週/,                fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
-    {r:/今週中|今週/,       fn:function(){return new Date(Date.now()+5*86400000).toISOString().split('T')[0];}},
-    {r:/翌日|明日/,          fn:function(){return new Date(Date.now()+1*86400000).toISOString().split('T')[0];}},
-    {r:/即日|即日開始|即時|即日継続/, fn:function(){return today();}},
-    {r:/今日/,               fn:function(){return today();}},
-    {r:/(\d+)日以内/,        fn:function(m){return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];}},
-    {r:/次回会議/,           fn:function(){return new Date(Date.now()+14*86400000).toISOString().split('T')[0];}},
-    {r:/継続/,               fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
-    {r:/毎週/,               fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
-  ];
-
-  function getDue(str) {
-    for(var pi=0;pi<duePats.length;pi++){
-      var dm=str.match(duePats[pi].r);
-      if(dm){try{return duePats[pi].fn(dm);}catch(e){}}
-    }
-    return defDue;
-  }
-
-  function findPersons(str) {
-    var found = [];
-    members.forEach(function(name){
-      if(str.includes(name)) found.push(name);
-    });
-    if(!found.length) {
-      if(str.includes('営業部')||str.includes('全営業')) found.push('その他');
-      if(str.includes('管理側')||str.includes('管理部')) found.push('その他');
-      if(str.includes('広報')) found.push('その他');
-    }
-    return found.length ? found : null;
-  }
-
-  var lines = text.split('\n');
-  var inActionSection = false;
-
-  lines.forEach(function(line) {
-    var l = line.trim();
-    if (!l) return;
-
-    if (/^4[\s\.\s]*アクション|アクションアイテム|アクションリスト/.test(l)) {
-      inActionSection = true;
-      return;
-    }
-    if (/^5-[9][\s\.]/.test(l) || /^次回会議|^数字確認|^管理者/.test(l)) {
-      inActionSection = false;
-    }
-
-    if (/^担当[\s\t]+(タスク|内容)/.test(l)) return;
-
-    var tabs = l.split(/\t/);
-    if (tabs.length >= 2) {
-      var namePart = tabs[0].trim();
-      var taskPart = tabs[1].trim();
-      var duePart  = tabs.length >= 3 ? tabs[2].trim() : '';
-
-      var persons = findPersons(namePart);
-      if (persons && taskPart.length >= 4 && taskPart.length <= 100) {
-        var due = duePart ? getDue(duePart) : getDue(l);
-        taskPart = taskPart.replace(/[（(][^）)]+[）)]/g, '').trim();
-        taskPart = taskPart.replace(/[。、！!？?]$/, '').trim();
-        persons.forEach(function(p){
-          results.push({title: taskPart, person: p, due: due});
-        });
-        return;
-      }
-    }
-
-    if (inActionSection) {
-      var spaceMatch = l.match(/^([^\s]{1,10}(?:[\s・][^\s]{1,10})*)\s{2,}(.+?)\s{2,}(.+)$/);
-      if (!spaceMatch) {
-        var firstWord = l.split(/\s/)[0];
-        var fp = findPersons(firstWord);
-        if (fp) {
-          var rest = l.replace(firstWord, '').trim();
-          var dueMatch = rest.match(/(来週|今週中|明日|翌日|即日|今月末|次回会議|継続|毎週|\d+月\d+日|\d+日以内)(.*)$/);
-          var taskStr = rest, dueStr = '';
-          if(dueMatch){
-            dueStr = dueMatch[1];
-            taskStr = rest.replace(dueMatch[0], '').trim();
-          }
-          if(taskStr.length >= 4 && taskStr.length <= 100){
-            var due = dueStr ? getDue(dueStr) : getDue(l);
-            fp.forEach(function(p){
-              results.push({title: taskStr, person: p, due: due});
-            });
-            return;
-          }
-        }
-      } else {
-        var persons3 = findPersons(spaceMatch[1]);
-        if(persons3){
-          var taskStr2 = spaceMatch[2].trim();
-          var dueStr2  = spaceMatch[3].trim();
-          var due2 = getDue(dueStr2)||getDue(l);
-          taskStr2 = taskStr2.replace(/[。、！!？?]$/, '').trim();
-          if(taskStr2.length >= 4){
-            persons3.forEach(function(p){
-              results.push({title: taskStr2, person: p, due: due2});
-            });
-            return;
-          }
-        }
-      }
-    }
-
-    var colonMatch = l.match(/^([^\s：:、]{1,12}(?:[・&][^\s：:、]{1,12})*)\s*[：:]\s*(.+)/);
-    if (colonMatch) {
-      var namePart2 = colonMatch[1];
-      var taskPart2 = colonMatch[2].trim();
-      if (taskPart2.length < 4) return;
-      var persons4 = findPersons(namePart2);
-      var due3 = defDue;
-      var bm = taskPart2.match(/[（(]([^）)]+)[）)]/);
-      if(bm){ due3=getDue(bm[1]); taskPart2=taskPart2.replace(/[（(][^）)]+[）)]/g,'').trim(); }
-      else { due3=getDue(l); }
-      taskPart2 = taskPart2.replace(/[。、！!？?]$/, '').trim();
-      if(taskPart2.length < 4 || taskPart2.length > 80) return;
-      if(persons4 && persons4.length > 0){
-        persons4.forEach(function(p){ results.push({title:taskPart2, person:p, due:due3}); });
-      } else {
-        var tv=['作成','提出','確認','報告','連絡','対応','実施','訪問','検討','記録','整備','調整'];
-        if(tv.some(function(v){return taskPart2.includes(v;})){
-          results.push({title:taskPart2, person:'other', due:due3});
-        }
-      }
-      return;
-    }
-
-    var taskVerbs = ['作成','提出','送付','発注','確認','報告','連絡','対応','手配','準備',
-      '整備','調整','実施','依頼','申請','共有','整理','強化','推進','開始','訪問',
-      '導入','検討','記録','洗い出し','告知','運用','増加','復旧'];
-    var lClean = l.replace(/^[・\-\*\s\d\.\)]+/, '').trim();
-    var hasMember=false, person='その他';
-    members.forEach(function(name){ if(lClean.includes(name)&&!hasMember){person=name;hasMember=true;} });
-    var hasVerb=taskVerbs.some(function(v){return lClean.includes(v);});
-    if(!hasMember||!hasVerb) return;
-    if(/^[\d]+[\.\s]/.test(lClean)) return;
-    var skipWords2=['会議概要','重要課題','決定事項','数字確認','次回会議','管理者'];
-    if(skipWords2.some(function(s){return lClean.startsWith(s);})) return;
-    var due4=getDue(lClean);
-    var title2=lClean.replace(/[。、！!？?]$/,'').trim();
-    if(title2.length<4||title2.length>80) return;
-    results.push({title:title2, person:person, due:due4});
-  });
-
-  var seen={};
-  pendingTasks = results.filter(function(t){
-    var key=t.title.slice(0,25);
-    if(seen[key])return false;
-    seen[key]=true;return true;
-  });
-}
-
-function renderTaskExtract(extracted, mid) {
-  const area=document.getElementById('task-extract-area'); if(!area) return;
-  if (!extracted.length) {
-    area.innerHTML=
-      '<div class="db-banner warn"><i class="ti ti-alert-triangle" style="font-size:18px;flex-shrink:0"></i>'+
-      '<div>アクションアイテムが検出されませんでした。手動で追加してください。</div></div>'+
-      '<button class="big-btn btn-primary" onclick="switchTab(\'add\')"><i class="ti ti-plus"></i> 手動でタスクを追加</button>';
-    return;
-  }
-  let html='<div style="font-size:13px;color:#888;margin-bottom:10px"><i class="ti ti-sparkles"></i> '+extracted.length+'件のタスクを検出。不要な行は ✕ で除外できます。</div>';
-  extracted.forEach((t,i)=>{
-    const opts=members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('')
-      +'<option value="その他"'+(t.person==='その他'?' selected':'')+'>その他</option>';
-    html+='<div class="extracted-task-row" id="erow-'+i+'">'+
-      '<div class="task-text">'+escHtml(t.title)+'</div>'+
-      '<select id="ep-'+i+'">'+opts+'</select>'+
-      '<input type="date" id="ed-'+i+'" value="'+t.due+'">'+
-      '<button onclick="removeExtractedRow('+i+')" style="background:var(--red-light);border:1.5px solid #FFBBBB;color:#C02020;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px;flex-shrink:0;font-weight:700" title="除外">✕</button>'+
-      '</div>';
-  });
-  html+='<button class="big-btn btn-primary" style="margin-top:8px" onclick="confirmAndRegister('+mid+')">'+
-    '<i class="ti ti-check"></i> タスクを登録してダッシュボードに反映</button>';
-  area.innerHTML=html;
-}
-
-function removeExtractedRow(i) {
-  const row = document.getElementById('erow-'+i);
-  if (row) {
-    row.style.opacity='0.4';
-    row.style.pointerEvents='none';
-    row.style.textDecoration='line-through';
-    const btn = row.querySelector('button');
-    if(btn) btn.innerHTML='除外済み';
-  }
-}
-
-async function confirmAndRegister(mid) {
-  const btn=document.querySelector('#task-extract-area .btn-primary');
-  if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner-dark"></span> 登録中...';}
-  const createdIds=[];
-  try {
-    for(let i=0;i<pendingTasks.length;i++){
-      const t=pendingTasks[i];
-      const row=document.getElementById('erow-'+i);
-      if(row && row.style.pointerEvents==='none') continue; 
-      const person=document.getElementById('ep-'+i)?.value||t.person;
-      const due=document.getElementById('ed-'+i)?.value||t.due;
-      const saved=await dbInsertTask({title:t.title,person,due,status:'todo',from_meeting:true,minutes_id:mid});
-      tasks.push(saved);
-      createdIds.push(saved.id);
-    }
-    if(mid&&createdIds.length>0){
-      await dbUpdateMinutesTaskIds(mid, createdIds);
-      const mi=minutesList.findIndex(m=>m.id===mid);
-      if(mi>-1) minutesList[mi].task_ids=createdIds;
-    }
-    pendingTasks=[]; pendingMid=null;
-    clearAIForm(); renderAll(); switchTab('tasks');
-    alert('✅ '+createdIds.length+'件のタスクをデータベースに保存しました！\nページを更新しても消えません。');
-  } catch(e) {
-    if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-check"></i> タスクを登録してダッシュボードに反映';}
-    alert('登録エラー: '+e.message+'\n\nSupabaseの接続状態を確認してください。');
-  }
-}
-
-async function saveMinutesOnly() {
-  const body=document.getElementById('minutes-result').value.trim();
-  const title=document.getElementById('meeting-title').value.trim();
-  const date=document.getElementById('meeting-date').value;
-  const mems=document.getElementById('meeting-members').value.trim();
-  if (!body) { alert('議事録が空です'); return; }
-  try {
-    const saved=await dbInsertMinutes({title,date:date||today(),members:mems,body,task_ids:[]});
-    minutesList.push({...saved,task_ids:[]});
-    clearAIForm(); renderAll(); switchTab('minutes');
-    alert('議事録を保存しました');
-  } catch(e) { alert('保存エラー: '+e.message); }
-}
-
-function clearAIForm() {
-  ['meeting-title','meeting-members'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  const md=document.getElementById('meeting-date'); if(md) md.value=today();
-  const ti=document.getElementById('transcription-input'); if(ti) ti.value='';
-  const mr=document.getElementById('minutes-result'); if(mr) mr.value='';
-  showStep(1);
-}
-
-async function addManualTask() {
-  const title=document.getElementById('f-title').value.trim();
-  const person=document.getElementById('f-person').value;
-  const due=document.getElementById('f-due').value;
-  const status=document.getElementById('f-status').value;
-  if (!title||!due) { alert('タスク内容と期限を入力してください'); return; }
-  try {
-    setSyncBadge('loading');
-    const saved=await dbInsertTask({title,person,due,status,from_meeting:false,minutes_id:null});
-    tasks.push(saved);
-    setSyncBadge('ok');
-    document.getElementById('f-title').value='';
-    renderAll(); switchTab('tasks');
-  } catch(e) {
-    setSyncBadge('err');
-    alert('追加エラー: '+e.message);
-  }
-}
-
 function switchTab(tab) {
   ['tasks','ai','minutes','members','add'].forEach(t=>{
     const el=document.getElementById('tab-'+t);
@@ -1220,15 +843,6 @@ function switchTab(tab) {
   if(tab==='minutes') renderMinutes();
   if(tab==='members') renderMembers();
   if(tab==='ai')      showStep(1);
-}
-
-function showBanner(type, msg) {
-  const el = document.getElementById('db-banner');
-  if (!el) return;
-  if (!type || !msg) { el.style.display='none'; return; }
-  el.className = 'db-banner ' + type;
-  el.innerHTML = '<i class="ti ti-alert-circle" style="font-size:18px;flex-shrink:0"></i><div>' + msg + '</div>';
-  el.style.display = 'flex';
 }
 
 // ==================== 起動 ====================
