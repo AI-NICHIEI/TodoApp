@@ -7,72 +7,128 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,sans-serif;background:#EEF9EE;min-height:100vh}
-#app{max-width:520px;margin:0 auto;background:#fff;min-height:100vh;box-shadow:0 0 20px rgba(0,0,0,.08)}
-.hdr{background:linear-gradient(135deg,#7DBF3A,#5BB8E8);padding:16px 18px;color:#fff}
-.hdr h1{font-size:15px;font-weight:700;line-height:1.4}
-.hdr p{font-size:11px;opacity:.85;margin-top:4px}
-.sync{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;float:right;margin-top:-2px}
+html,body{height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#E8F7D0;min-height:100vh}
+#app{max-width:1200px;margin:0 auto;background:#fff;min-height:100vh;display:flex;flex-direction:column;box-shadow:0 0 40px rgba(0,0,0,.1)}
+.hdr{background:linear-gradient(120deg,#7DBF3A,#5BB8E8);padding:16px 24px;color:#fff;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.hdr-text{flex:1}
+.hdr h1{font-size:16px;font-weight:700;line-height:1.45}
+.hdr p{font-size:11px;opacity:.85;margin-top:3px}
+.sync{font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;white-space:nowrap}
 .sync.ok{background:rgba(255,255,255,.25);color:#fff}
 .sync.err{background:#FFCECE;color:#C02020}
 .sync.loading{background:rgba(255,255,255,.15);color:#fff}
-.wknav{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:#E8F7D0;border-bottom:2px solid #A8D96A}
-.wkbtn{background:#7DBF3A;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer}
+.wknav{display:flex;align-items:center;justify-content:space-between;padding:11px 24px;background:#E8F7D0;border-bottom:2px solid #A8D96A;flex-shrink:0}
+.wkbtn{background:#7DBF3A;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer}
 .wkbtn:disabled{background:#ccc}
-.dtabs{display:flex;background:#fff;border-bottom:2px solid #A8D96A;overflow-x:auto}
-.dtab{flex:1;min-width:60px;padding:8px 3px;text-align:center;cursor:pointer;border:none;background:transparent;border-bottom:3px solid transparent;margin-bottom:-2px}
+.wklbl{font-size:14px;font-weight:700;color:#5A9A1F}
+
+/* 表示切替タブ */
+.view-tabs{display:flex;background:#fff;border-bottom:2px solid #A8D96A;flex-shrink:0}
+.vtab{flex:1;padding:12px;text-align:center;cursor:pointer;border:none;background:transparent;border-bottom:3px solid transparent;margin-bottom:-2px;font-size:14px;font-weight:700;color:#999;transition:all .15s}
+.vtab.on{border-bottom-color:#7DBF3A;color:#5A9A1F;background:#E8F7D0}
+
+/* 日付タブ（日別ビュー用） */
+.dtabs{display:flex;background:#fff;border-bottom:3px solid #A8D96A;flex-shrink:0}
+.dtab{flex:1;padding:12px 4px;text-align:center;cursor:pointer;border:none;background:transparent;border-bottom:4px solid transparent;margin-bottom:-3px;transition:all .15s}
 .dtab.on{border-bottom-color:#7DBF3A;background:#E8F7D0}
-.dn{font-size:10px;font-weight:700;color:#999}
+.dn{font-size:12px;font-weight:700;color:#999}
 .dtab.on .dn{color:#5A9A1F}
-.dnum{font-size:19px;font-weight:700;color:#333;margin:2px 0}
+.dnum{font-size:26px;font-weight:700;color:#333;margin:3px 0}
 .dtab.on .dnum{color:#5A9A1F}
-.dbk{font-size:10px;font-weight:700;color:#fff;background:#7DBF3A;border-radius:10px;padding:1px 6px;display:inline-block}
+.dbk{font-size:13px;font-weight:700;color:#fff;background:#7DBF3A;border-radius:12px;padding:3px 10px;display:inline-block;margin-top:4px}
 .dbk.z{background:#ddd;color:#999}
-.wrap{padding:13px 14px}
-.day-title{font-size:15px;font-weight:700;color:#5A9A1F;margin-bottom:10px}
-.total-badge{background:#E8F7D0;border:2px solid #A8D96A;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;font-weight:700;color:#5A9A1F;display:flex;align-items:center;gap:8px}
-/* タイムライン形式 */
-.slot-row{display:flex;align-items:center;border-radius:11px;padding:10px 12px;margin-bottom:7px;gap:10px}
+
+.wrap{flex:1;padding:16px 24px;overflow-y:auto}
+.day-title{font-size:16px;font-weight:700;color:#5A9A1F;margin-bottom:10px}
+.total-badge{background:#E8F7D0;border:2px solid #A8D96A;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:14px;font-weight:700;color:#5A9A1F}
+
+/* スロット行（日別） */
+.slot-row{display:flex;align-items:center;border-radius:11px;padding:10px 14px;margin-bottom:7px;gap:10px}
 .slot-row.booked{background:#E8F7D0;border:2px solid #A8D96A}
 .slot-row.booked.s15{background:#D6F0FF;border-color:#89CFEE}
-.slot-row.empty{background:#F8F8F8;border:2px solid #E8E8E8}
-.sl-time{font-size:13px;font-weight:700;min-width:48px}
+.slot-row.empty{background:#F8F8F8;border:2px solid #EEEEEE}
+.sl-time{font-size:14px;font-weight:700;min-width:52px}
 .slot-row.booked .sl-time{color:#5A9A1F}
 .slot-row.booked.s15 .sl-time{color:#1A6E9A}
-.slot-row.empty .sl-time{color:#bbb}
-.sl-dur{font-size:10px;font-weight:700;border-radius:8px;padding:2px 7px;white-space:nowrap}
+.slot-row.empty .sl-time{color:#ccc}
+.sl-dur{font-size:11px;font-weight:700;border-radius:8px;padding:3px 8px;white-space:nowrap}
 .slot-row.booked .sl-dur{background:#A8D96A;color:#fff}
 .slot-row.booked.s15 .sl-dur{background:#89CFEE;color:#fff}
-.slot-row.empty .sl-dur{background:#E0E0E0;color:#aaa}
-.sl-co{font-size:13px;font-weight:600;flex:1}
+.slot-row.empty .sl-dur{background:#E8E8E8;color:#bbb}
+.sl-co{font-size:14px;font-weight:600;flex:1}
 .slot-row.booked .sl-co{color:#333}
-.slot-row.empty .sl-co{color:#ccc;font-style:italic}
-.sl-circle{font-size:18px;color:#7DBF3A}
-.sl-del{background:#FFE8E8;color:#E05B5B;border:1.5px solid #FFBBBB;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
-.mbg{position:fixed;inset:0;background:rgba(0,0,0,.52);display:flex;align-items:center;justify-content:center;z-index:100;padding:18px}
-.mbox{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:340px;box-shadow:0 10px 40px rgba(0,0,0,.2)}
-.mttl{font-size:16px;font-weight:700;color:#E05B5B;margin-bottom:10px}
-.mbtns{display:flex;gap:8px;margin-top:14px}
-.mbtns button{flex:1;padding:12px;border-radius:10px;font-size:14px;font-weight:700;border:none;cursor:pointer}
+.slot-row.empty .sl-co{color:#ddd;font-style:italic;font-size:13px}
+.sl-circle{font-size:18px;color:#A8D96A}
+.sl-del{background:#FFE8E8;color:#E05B5B;border:1.5px solid #FFBBBB;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+
+/* 週一覧ビュー */
+.week-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0;border:2px solid #A8D96A;border-radius:14px;overflow:hidden}
+.wg-col{border-right:1px solid #A8D96A}
+.wg-col:last-child{border-right:none}
+.wg-head{background:#7DBF3A;color:#fff;text-align:center;padding:10px 4px;font-weight:700}
+.wg-head .wg-dn{font-size:11px;opacity:.85}
+.wg-head .wg-dnum{font-size:20px;font-weight:700;margin:2px 0}
+.wg-head .wg-cnt{font-size:11px;background:rgba(255,255,255,.25);border-radius:8px;padding:2px 6px;display:inline-block}
+.wg-slot{padding:5px 6px;border-top:1px solid #D8EDB8;font-size:12px;min-height:36px;display:flex;align-items:center;cursor:default}
+.wg-slot.booked{background:#E8F7D0;cursor:pointer}
+.wg-slot.booked:hover{background:#D0F0B0}
+.wg-slot.booked.s15{background:#D6F0FF}
+.wg-slot.booked.s15:hover{background:#C0E8FF}
+.wg-slot.empty-slot{color:#ddd;justify-content:center;font-size:11px}
+.wg-time{font-size:10px;color:#999;font-weight:700;white-space:nowrap}
+.wg-co{font-size:11px;font-weight:700;color:#5A9A1F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.wg-slot.booked.s15 .wg-co{color:#1A6E9A}
+.wg-slot-inner{width:100%;overflow:hidden}
+
+/* モーダル */
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.52);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.mbox{background:#fff;border-radius:18px;padding:24px;width:100%;max-width:380px;box-shadow:0 16px 60px rgba(0,0,0,.25)}
+.mttl{font-size:17px;font-weight:700;color:#E05B5B;margin-bottom:10px}
+.minfo{background:#E8F7D0;border-radius:10px;padding:12px;font-size:14px;color:#555;line-height:1.7;margin-bottom:14px}
+.mbtns{display:flex;gap:10px}
+.mbtns button{flex:1;padding:13px;border-radius:12px;font-size:14px;font-weight:700;border:none;cursor:pointer}
 .mok{background:#FFE8E8;color:#E05B5B;border:2px solid #FFBBBB}
 .mng{background:#EFEFEF;color:#666}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+@media(min-width:600px){
+  .hdr h1{font-size:20px}
+  .dnum{font-size:30px}
+  .dbk{font-size:14px}
+  .wg-head .wg-dnum{font-size:24px}
+  .wg-co{font-size:12px}
+  .wg-time{font-size:11px}
+}
+@media(min-width:1024px){
+  .hdr h1{font-size:22px}
+  .dtab{padding:16px 6px}
+  .dnum{font-size:34px}
+  .wg-co{font-size:13px}
+}
 </style>
 </head>
 <body>
 <div id="app">
   <div class="hdr">
+    <div class="hdr-text">
+      <h1>🛡 管理者画面 ｜ 🚛 日榮中間処理場 搬入予約</h1>
+      <p>予約の確認・削除 ｜ 週間スケジュール表示</p>
+    </div>
     <span class="sync loading" id="sync-badge"><span class="spinner"></span> 接続中</span>
-    <h1>🛡 管理者画面<br>🚛 日榮中間処理場 搬入予約</h1>
-    <p>予約一覧の確認・削除ができます</p>
   </div>
   <div class="wknav">
     <button class="wkbtn" id="pb" onclick="chW(-1)" disabled>◀ 前週</button>
-    <div style="font-size:13px;font-weight:700;color:#5A9A1F" id="wlbl"></div>
+    <div class="wklbl" id="wlbl"></div>
     <button class="wkbtn" id="nb" onclick="chW(1)">次週 ▶</button>
   </div>
-  <div class="dtabs" id="dtabs"></div>
+  <!-- 表示切替 -->
+  <div class="view-tabs">
+    <button class="vtab on" id="vtab-day" onclick="switchView('day')">📅 日別ビュー</button>
+    <button class="vtab" id="vtab-week" onclick="switchView('week')">📋 週間一覧</button>
+  </div>
+  <!-- 日別: 日付タブ -->
+  <div class="dtabs" id="dtabs" style="display:flex"></div>
   <div class="wrap" id="wrap"></div>
   <div id="modal"></div>
 </div>
@@ -80,8 +136,7 @@ body{font-family:-apple-system,sans-serif;background:#EEF9EE;min-height:100vh}
 const SUPABASE_URL="https://uzjftccxoipspazrtuvl.supabase.co";
 const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4NjQ1NTYsImV4cCI6MjA5NTQ0MDU1Nn0.qsXWRTk2hwK4JtIBoNuq-8OXPJYb3-Q4BPugBg2tzd8";
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false}});
-
-var R={},wk=1,sd=0;
+var R={},wk=1,sd=0,view='day';
 var DN=['月','火','水','木','金','土'];
 var SLOTS=[
   {t:'08:00',dur:'30'},{t:'08:30',dur:'30'},{t:'09:00',dur:'30'},{t:'09:30',dur:'30'},
@@ -91,7 +146,6 @@ var SLOTS=[
   {t:'14:00',dur:'30'},{t:'14:30',dur:'30'},{t:'14:45',dur:'15'},
   {t:'15:00',dur:'30'},{t:'15:30',dur:'30'},{t:'16:00',dur:'30'}
 ];
-
 function gw(o){var t=new Date();t.setHours(0,0,0,0);var dw=t.getDay(),df=dw===0?-6:1-dw,mn=new Date(t);mn.setDate(t.getDate()+df+o*7);return Array.from({length:6},function(_,i){var d=new Date(mn);d.setDate(mn.getDate()+i);return d;});}
 function fmt(d){return d.toISOString().split('T')[0];}
 function fj(d){return(d.getMonth()+1)+'月'+d.getDate()+'日';}
@@ -108,17 +162,31 @@ async function loadAll(){
     R={};(data||[]).forEach(function(r){R[r.date+'_'+r.time_slot]={co:r.company,dur:r.duration,id:r.id};});
     setBadge('ok');
   }catch(e){console.error(e);setBadge('err');}
-  rTabs();rList();
+  render();
 }
 function chW(d){wk+=d;sd=0;loadAll();}
-function upd(){var days=gw(wk);document.getElementById('wlbl').textContent=fj(days[0])+'〜'+fj(days[5]);document.getElementById('pb').disabled=wk<=1;document.getElementById('nb').disabled=wk>=4;}
+function upd(){
+  var days=gw(wk);
+  document.getElementById('wlbl').textContent=fj(days[0])+'〜'+fj(days[5]);
+  document.getElementById('pb').disabled=wk<=1;
+  document.getElementById('nb').disabled=wk>=4;
+}
+function switchView(v){
+  view=v;
+  document.getElementById('vtab-day').className='vtab'+(v==='day'?' on':'');
+  document.getElementById('vtab-week').className='vtab'+(v==='week'?' on':'');
+  document.getElementById('dtabs').style.display=v==='day'?'flex':'none';
+  render();
+}
+function render(){upd();if(view==='day'){rTabs();rList();}else{rWeek();}}
+
 function rTabs(){
-  upd();var days=gw(wk),h='';
+  var days=gw(wk),h='';
   days.forEach(function(d,i){
     var ds=fmt(d),bk=cntBooked(ds);
     h+='<button class="dtab'+(i===sd?' on':'')+'" onclick="selD('+i+')">'
       +'<div class="dn">'+DN[i]+'</div><div class="dnum">'+d.getDate()+'</div>'
-      +'<div class="dbk'+(bk===0?' z':'')+'">'+bk+'件</div></button>';
+      +'<div><span class="dbk'+(bk===0?' z':'')+'">'+bk+'件</span></div></button>';
   });
   document.getElementById('dtabs').innerHTML=h;
 }
@@ -126,23 +194,20 @@ function selD(i){sd=i;rTabs();rList();}
 
 function rList(){
   var days=gw(wk),day=days[sd],ds=fmt(day);
-  var bookedCnt=cntBooked(ds);
+  var bk=cntBooked(ds);
   var h='<div class="day-title">📅 '+fj(day)+'（'+DN[sd]+'）</div>';
-  h+='<div class="total-badge">📋 予約 '+bookedCnt+' 件 ／ 空き '+(SLOTS.length-bookedCnt)+' 枠</div>';
-
+  h+='<div class="total-badge">📋 予約 '+bk+' 件 ／ 空き '+(SLOTS.length-bk)+' 枠</div>';
   SLOTS.forEach(function(s){
     var r=R[ds+'_'+s.t];
     var is15=s.dur==='15';
     if(r){
-      // 予約あり
       h+='<div class="slot-row booked'+(is15?' s15':'')+'">'
         +'<div class="sl-time">'+s.t+'</div>'
         +'<div class="sl-dur">'+s.dur+'分</div>'
         +'<div class="sl-co">🏢 '+esc(r.co)+'</div>'
         +'<button class="sl-del" onclick="confirmDel(\''+ds+'\',\''+s.t+'\')">🗑 削除</button>'
         +'</div>';
-    } else {
-      // 空き
+    }else{
       h+='<div class="slot-row empty'+(is15?' s15':'')+'">'
         +'<div class="sl-time">'+s.t+'</div>'
         +'<div class="sl-dur">'+s.dur+'分</div>'
@@ -151,18 +216,49 @@ function rList(){
         +'</div>';
     }
   });
+  document.getElementById('wrap').innerHTML=h;
+}
 
+function rWeek(){
+  var days=gw(wk);
+  // ヘッダー行
+  var h='<div style="overflow-x:auto"><div class="week-grid" style="min-width:480px">';
+  // 列ヘッダー
+  days.forEach(function(d,i){
+    var ds=fmt(d),bk=cntBooked(ds);
+    h+='<div class="wg-col"><div class="wg-head">'
+      +'<div class="wg-dn">'+DN[i]+'</div>'
+      +'<div class="wg-dnum">'+d.getDate()+'</div>'
+      +'<div><span class="wg-cnt">'+bk+'件</span></div>'
+      +'</div>';
+    // スロット
+    SLOTS.forEach(function(s){
+      var ds2=fmt(d),r=R[ds2+'_'+s.t],is15=s.dur==='15';
+      if(r){
+        h+='<div class="wg-slot booked'+(is15?' s15':'')+'" onclick="confirmDel(\''+ds2+'\',\''+s.t+'\')" title="'+esc(r.co)+'">'
+          +'<div class="wg-slot-inner">'
+          +'<div class="wg-time">'+s.t+'</div>'
+          +'<div class="wg-co">'+esc(r.co)+'</div>'
+          +'</div></div>';
+      }else{
+        h+='<div class="wg-slot empty-slot"><span style="color:#ddd">○</span></div>';
+      }
+    });
+    h+='</div>';
+  });
+  h+='</div></div>';
   document.getElementById('wrap').innerHTML=h;
 }
 
 function confirmDel(ds,t){
   var r=R[ds+'_'+t];if(!r)return;
   var p=ds.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);
+  var dayIdx=gw(wk).findIndex(function(day){return fmt(day)===ds;});
+  var dayName=dayIdx>=0?DN[dayIdx]:'';
   document.getElementById('modal').innerHTML=
     '<div class="mbg" onclick="clM(event)"><div class="mbox">'
     +'<div class="mttl">🗑 予約を削除しますか？</div>'
-    +'<div style="background:#E8F7D0;border-radius:9px;padding:12px;font-size:13px;color:#555;line-height:1.7">'
-    +'📅 '+m+'月'+d+'日（'+DN[sd]+'）<br>🕐 '+t+'〜<br>🏢 '+esc(r.co)+'</div>'
+    +'<div class="minfo">📅 '+m+'月'+d+'日（'+dayName+'）<br>🕐 '+t+'〜<br>🏢 '+esc(r.co)+'</div>'
     +'<div class="mbtns">'
     +'<button class="mng" onclick="clM()">キャンセル</button>'
     +'<button class="mok" id="del-btn" onclick="doDel(\''+ds+'\',\''+t+'\')">削除する</button>'
@@ -174,7 +270,7 @@ async function doDel(ds,t){
   try{
     var{error}=await db.from('reservations').delete().eq('id',r.id);
     if(error)throw error;
-    delete R[ds+'_'+t];clM();rTabs();rList();
+    delete R[ds+'_'+t];clM();render();
   }catch(e){alert('削除エラー: '+e.message);if(btn){btn.disabled=false;btn.textContent='削除する';}}
 }
 function clM(e){if(!e||e.target.className==='mbg')document.getElementById('modal').innerHTML='';}
