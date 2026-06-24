@@ -188,6 +188,18 @@ async function dB(ds,t,dur){
     var{data,error}=await db.from('reservations').insert([{date:ds,time_slot:t,company:co,phone:ph||null,duration:dur}]).select();
     if(error)throw error;
     R[ds+'_'+t]={co:co,dur:dur,id:data[0].id};
+    // Google Chat通知
+    var p=ds.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);
+    var msg='🚛 *搬入予約が入りました*\n'
+      +'📅 '+m+'月'+d+'日（'+DN[sd]+'）\n'
+      +'🕐 '+t+'〜（'+dur+'分枠）\n'
+      +'🏢 '+co
+      +(ph?'\n📞 '+ph:'');
+    fetch('https://chat.googleapis.com/v1/spaces/AAQAmBmeiUo/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=VXrRm3SPFEyrdTCtun7IjuiymUxtWRr0FcFY9MEBl_k',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:msg})
+    }).catch(function(e){console.warn('Chat通知失敗:',e);});
     document.getElementById('modal').innerHTML=
       '<div class="mbg"><div class="mbox"><div class="complete-box">'
       +'<span class="icon">✅</span>'
@@ -199,6 +211,8 @@ async function dB(ds,t,dur){
     if(e.message&&e.message.includes('unique')){alert('この時間枠はすでに予約済みです。');}
     else{alert('エラー: '+e.message);}
     if(btn){btn.disabled=false;btn.innerHTML='✅ 予約する';}
+  }
+}
   }
 }
 function clM(e){if(!e||e.target.className==='mbg')document.getElementById('modal').innerHTML='';}
