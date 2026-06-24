@@ -23,7 +23,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .wkbtn:disabled{background:#ccc}
 .wklbl{font-size:14px;font-weight:700;color:#5A9A1F}
 .view-tabs{display:flex;background:#fff;border-bottom:2px solid #A8D96A;flex-shrink:0;overflow-x:auto}
-.vtab{flex:1;min-width:80px;padding:11px 8px;text-align:center;cursor:pointer;border:none;background:transparent;border-bottom:3px solid transparent;margin-bottom:-2px;font-size:12px;font-weight:700;color:#999;transition:all .15s;white-space:nowrap}
+.vtab{flex:1;min-width:70px;padding:11px 6px;text-align:center;cursor:pointer;border:none;background:transparent;border-bottom:3px solid transparent;margin-bottom:-2px;font-size:12px;font-weight:700;color:#999;transition:all .15s;white-space:nowrap}
 .vtab.on{border-bottom-color:#7DBF3A;color:#5A9A1F;background:#E8F7D0}
 .dtabs{display:flex;background:#fff;border-bottom:3px solid #A8D96A;flex-shrink:0}
 .dtab{flex:1;padding:12px 4px;text-align:center;cursor:pointer;border:none;background:transparent;border-bottom:4px solid transparent;margin-bottom:-3px;transition:all .15s}
@@ -59,9 +59,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .wg-col{border-right:1px solid #A8D96A}
 .wg-col:last-child{border-right:none}
 .wg-head{background:#7DBF3A;color:#fff;text-align:center;padding:10px 4px;font-weight:700}
-.wg-head .wg-dn{font-size:11px;opacity:.85}
-.wg-head .wg-dnum{font-size:20px;font-weight:700;margin:2px 0}
-.wg-head .wg-cnt{font-size:11px;background:rgba(255,255,255,.25);border-radius:8px;padding:2px 6px;display:inline-block}
+.wg-dn{font-size:11px;opacity:.85}
+.wg-dnum{font-size:20px;font-weight:700;margin:2px 0}
+.wg-cnt{font-size:11px;background:rgba(255,255,255,.25);border-radius:8px;padding:2px 6px;display:inline-block}
 .wg-slot{padding:5px 6px;border-top:1px solid #D8EDB8;font-size:12px;min-height:36px;display:flex;align-items:center;cursor:pointer;transition:background .1s}
 .wg-slot.booked{background:#E8F7D0}
 .wg-slot.booked:hover{background:#D0F0B0}
@@ -164,7 +164,7 @@ var TIME_MAP={
   '4:00':'16:00','16:00':'16:00'
 };
 var SLOTS_15=['10:15','11:15','13:45','14:45'];
-var SKIP_WORDS=['業 者 名','業者名','午前','午後','合計','持込','曜日','時間','仙台環境','日本産業'];
+var SKIP_WORDS=['業 者 名','業者名','午前','午後','合計','持込','曜日','時間','コンテナ','新規'];
 
 function gw(o){var t=new Date();t.setHours(0,0,0,0);var dw=t.getDay(),df=dw===0?-6:1-dw,mn=new Date(t);mn.setDate(t.getDate()+df+o*7);return Array.from({length:6},function(_,i){var d=new Date(mn);d.setDate(mn.getDate()+i);return d;});}
 function fmt(d){return d.toISOString().split('T')[0];}
@@ -216,14 +216,11 @@ function selD(i){sd=i;rTabs();rList();}
 
 function rList(){
   var days=gw(wk),day=days[sd],ds=fmt(day),bk=cntBooked(ds);
-  var h='<div class="day-title">📅 '+fj(day)+'（'+DN[sd]+'）</div>'+'<div class="total-badge">📋 予約 '+bk+' 件 ／ 空き '+(SLOTS.length-bk)+' 枠</div>';
+  var h='<div class="day-title">📅 '+fj(day)+'（'+DN[sd]+'）</div><div class="total-badge">📋 予約 '+bk+' 件 ／ 空き '+(SLOTS.length-bk)+' 枠</div>';
   SLOTS.forEach(function(s){
     var r=R[ds+'_'+s.t],is15=s.dur==='15';
-    if(r){
-      h+='<div class="slot-row booked'+(is15?' s15':'')+'">'+'<div class="sl-time">'+s.t+'</div>'+'<div class="sl-dur">'+s.dur+'分</div>'+'<div class="sl-co">🏢 '+esc(r.co)+(r.phone?'<span style="font-size:12px;color:#888;margin-left:8px">📞'+esc(r.phone)+'</span>':'')+'</div>'+'<button class="sl-del" onclick="confirmDel(\''+ds+'\',\''+s.t+'\')">🗑 削除</button></div>';
-    }else{
-      h+='<div class="slot-row empty'+(is15?' s15':'')+'" onclick="openAddBook(\''+ds+'\',\''+s.t+'\',\''+s.dur+'\')">'+'<div class="sl-time">'+s.t+'</div>'+'<div class="sl-dur">'+s.dur+'分</div>'+'<div class="sl-co">空き ― タップして予約登録</div>'+'<button class="sl-add" onclick="event.stopPropagation();openAddBook(\''+ds+'\',\''+s.t+'\',\''+s.dur+'\')">＋ 予約</button></div>';
-    }
+    if(r){h+='<div class="slot-row booked'+(is15?' s15':'')+'">'+'<div class="sl-time">'+s.t+'</div>'+'<div class="sl-dur">'+s.dur+'分</div>'+'<div class="sl-co">🏢 '+esc(r.co)+(r.phone?'<span style="font-size:12px;color:#888;margin-left:8px">📞'+esc(r.phone)+'</span>':'')+'</div>'+'<button class="sl-del" onclick="confirmDel(\''+ds+'\',\''+s.t+'\')">🗑 削除</button></div>';}
+    else{h+='<div class="slot-row empty'+(is15?' s15':'')+'" onclick="openAddBook(\''+ds+'\',\''+s.t+'\',\''+s.dur+'\')">'+'<div class="sl-time">'+s.t+'</div>'+'<div class="sl-dur">'+s.dur+'分</div>'+'<div class="sl-co">空き ― タップして予約登録</div>'+'<button class="sl-add" onclick="event.stopPropagation();openAddBook(\''+ds+'\',\''+s.t+'\',\''+s.dur+'\')">＋ 予約</button></div>';}
   });
   document.getElementById('wrap').innerHTML=h;
 }
@@ -285,7 +282,7 @@ async function delCustomer(id,name){
 }
 
 function rImport(){
-  document.getElementById('wrap').innerHTML='<div style="max-width:800px"><div class="section-title">📥 スプレッドシート取込</div><div class="import-info">📋 スプレッドシート「'+esc(SHEET_NAME)+'」から予約データを読み込みます。<br>⚠️ すでに登録済みの時間枠はスキップされます。</div><button onclick="loadSheetPreview()" style="padding:13px 28px;border-radius:10px;border:none;background:linear-gradient(120deg,#7DBF3A,#5BB8E8);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:16px">📥 スプレッドシートを読み込む</button><div id="preview-area"></div></div>';
+  document.getElementById('wrap').innerHTML='<div style="max-width:800px"><div class="section-title">📥 スプレッドシート取込</div><div class="import-info">📋 シート「R7.10月～」から予約データを読み込みます。<br>⚠️ すでに登録済みの時間枠はスキップされます。<br>📌 8:30以降のデータを取込みます。</div><button onclick="loadSheetPreview()" style="padding:13px 28px;border-radius:10px;border:none;background:linear-gradient(120deg,#7DBF3A,#5BB8E8);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:16px">📥 スプレッドシートを読み込む</button><div id="preview-area"></div></div>';
 }
 
 async function loadSheetPreview(){
@@ -296,7 +293,7 @@ async function loadSheetPreview(){
     if(!res.ok){var ej=await res.json().catch(function(){return{};});throw new Error((ej.error&&ej.error.message)||'HTTPエラー: '+res.status);}
     var rows=(await res.json()).values||[];
     importPreview=parseSheetData(rows);
-    if(!importPreview.length){document.getElementById('preview-area').innerHTML='<div style="background:#FFE8E8;border:2px solid #FFBBBB;border-radius:10px;padding:16px;color:#E05B5B">データが見つかりませんでした。</div>';return;}
+    if(!importPreview.length){document.getElementById('preview-area').innerHTML='<div style="background:#FFE8E8;border:2px solid #FFBBBB;border-radius:10px;padding:16px;color:#E05B5B">データが見つかりませんでした。シートの構造を確認してください。</div>';return;}
     var newItems=importPreview.filter(function(i){return !R[i.date+'_'+i.time_slot];});
     var skipItems=importPreview.filter(function(i){return !!R[i.date+'_'+i.time_slot];});
     var h='<div class="preview-table"><div class="preview-head">📋 読み込み結果：'+importPreview.length+'件（新規：'+newItems.length+'件 ／ スキップ：'+skipItems.length+'件）</div><div class="preview-list">';
@@ -315,60 +312,94 @@ async function loadSheetPreview(){
     if(newItems.length>0){h+='<button id="import-btn" onclick="doImport()" style="padding:14px 28px;border-radius:12px;border:none;background:linear-gradient(120deg,#7DBF3A,#5BB8E8);color:#fff;font-size:15px;font-weight:700;cursor:pointer">✅ '+newItems.length+'件を一括登録する</button>';}
     else{h+='<div style="background:#FFF8E6;border:2px solid #FFE4A0;border-radius:10px;padding:14px;font-size:14px;color:#8B5500">すべてのデータがすでに登録済みです。</div>';}
     document.getElementById('preview-area').innerHTML=h;
-  }catch(e){document.getElementById('preview-area').innerHTML='<div style="background:#FFE8E8;border:2px solid #FFBBBB;border-radius:10px;padding:16px;color:#E05B5B">❌ エラー: '+esc(e.message)+'<br><br><span style="font-size:12px">・スプレッドシートが「リンクを知っている全員が閲覧可能」になっているか確認してください</span></div>';}
+  }catch(e){
+    document.getElementById('preview-area').innerHTML='<div style="background:#FFE8E8;border:2px solid #FFBBBB;border-radius:10px;padding:16px;color:#E05B5B">❌ エラー: '+esc(e.message)+'<br><br><span style="font-size:12px">・スプレッドシートが「リンクを知っている全員が閲覧可能」になっているか確認してください</span></div>';
+  }
 }
 
 function parseSheetData(rows){
   var results=[],currentYear=new Date().getFullYear();
   if(!rows||rows.length<3)return results;
 
-  // 日付行を探す（「29日」「6月」が含まれる行）
-  var dateRowIdx=-1,monthRowIdx=-1;
-  for(var ri=0;ri<Math.min(rows.length,8);ri++){
-    var rs=(rows[ri]||[]).join('');
-    if(rs.match(/\d+日/)&&rs.match(/\d+月/)){dateRowIdx=ri;monthRowIdx=ri;break;}
-    if(rs.match(/\d+月/)&&monthRowIdx<0)monthRowIdx=ri;
-    if(rs.match(/\d+日/)&&monthRowIdx>=0){dateRowIdx=ri;break;}
-  }
-  if(dateRowIdx<0){dateRowIdx=1;monthRowIdx=0;}
+  // 3行目（インデックス2）が日付行
+  var dateRow=rows[2]||[];
 
-  var dateRow=rows[dateRowIdx]||[];
-  var monthRow=rows[monthRowIdx]||[];
-  var colPairs=[[1,2],[3,4],[5,6],[7,8],[9,10],[11,12]];
+  // 会社名が入る列：B=1, D=3, F=5, H=7, J=9, L=11
+  var companyCols=[1,3,5,7,9,11];
   var dates=[];
 
-  colPairs.forEach(function(pair){
-    var dc=dateRow[pair[0]]||dateRow[pair[0]-1]||'';
-    var mc=monthRow[pair[0]]||monthRow[pair[0]-1]||dc;
-    var mMatch=mc.match(/(\d+)月/)||dc.match(/(\d+)月/);
-    var dMatch=dc.match(/(\d+)日/);
+  // 月を全行から探す
+  var globalMonth=new Date().getMonth()+1;
+  for(var ri=0;ri<Math.min(rows.length,5);ri++){
+    var r=rows[ri]||[];
+    for(var ci=0;ci<r.length;ci++){
+      var mMatch=String(r[ci]||'').match(/(\d+)月/);
+      if(mMatch){globalMonth=parseInt(mMatch[1]);break;}
+    }
+  }
+
+  // 各列の日付を3行目から取得
+  companyCols.forEach(function(col){
+    // その列とその右隣のセルを確認
+    var dc='';
+    for(var ci=col;ci<=col+1&&ci<dateRow.length;ci++){
+      var cell=String(dateRow[ci]||'').trim();
+      if(cell.match(/\d+日/)||cell.match(/^\d{1,2}$/)){dc=cell;break;}
+    }
+    var dMatch=dc.match(/(\d+)日/)||dc.match(/^(\d{1,2})$/);
+    // 月を列付近から探す
+    var mo=globalMonth;
+    for(var ci=Math.max(0,col-2);ci<=col+2&&ci<dateRow.length;ci++){
+      var mm=String(dateRow[ci]||'').match(/(\d+)月/);
+      if(mm){mo=parseInt(mm[1]);break;}
+    }
     if(dMatch){
-      var mo=mMatch?parseInt(mMatch[1]):new Date().getMonth()+1;
       var dy=parseInt(dMatch[1]);
       var yr=currentYear;
-      if(mo<new Date().getMonth()-2)yr=currentYear+1;
+      var nowM=new Date().getMonth()+1;
+      if(mo<nowM-3)yr=currentYear+1;
       dates.push(yr+'-'+String(mo).padStart(2,'0')+'-'+String(dy).padStart(2,'0'));
-    }else{dates.push(null);}
+    }else{
+      dates.push(null);
+    }
   });
 
-  for(var ri=0;ri<rows.length;ri++){
+  // 4行目以降（インデックス3～）がデータ行
+  for(var ri=3;ri<rows.length;ri++){
     var row=rows[ri]||[];
-    var timeRaw=(row[0]||'').trim().replace(/[：:]/g,':').replace(/\s/g,'');
+    // A列（インデックス0）が時間
+    var timeRaw=String(row[0]||'').trim()
+      .replace(/[：:]/g,':')
+      .replace(/\s/g,'')
+      .replace(/時/,':')
+      .replace(/分/,'');
     var timeStr=TIME_MAP[timeRaw];
     if(!timeStr)continue;
-    colPairs.forEach(function(pair,ci){
+    // 8:30以降のみ
+    if(timeStr<'08:30')continue;
+
+    companyCols.forEach(function(col,ci){
       var ds=dates[ci];if(!ds)return;
-      var co=(row[pair[0]]||'').trim();
-      if(!co)return;
+      var co=String(row[col]||'').trim();
+      if(!co||co.length<2)return;
+      // スキップワード確認
       var skip=false;
       SKIP_WORDS.forEach(function(w){if(co.includes(w))skip=true;});
       if(skip)return;
+      // 数字のみはスキップ
+      if(/^\d+$/.test(co))return;
       var dur=SLOTS_15.includes(timeStr)?'15':'30';
       results.push({date:ds,time_slot:timeStr,company:co,duration:dur});
     });
   }
+
+  // 重複除去
   var seen={};
-  return results.filter(function(item){var k=item.date+'_'+item.time_slot;if(seen[k])return false;seen[k]=true;return true;});
+  return results.filter(function(item){
+    var k=item.date+'_'+item.time_slot;
+    if(seen[k])return false;
+    seen[k]=true;return true;
+  });
 }
 
 async function doImport(){
@@ -381,7 +412,8 @@ async function doImport(){
     try{
       var{data,error}=await db.from('reservations').insert([{date:item.date,time_slot:item.time_slot,company:item.company,duration:item.duration}]).select();
       if(error){fail++;continue;}
-      R[item.date+'_'+item.time_slot]={co:item.company,dur:item.duration,id:data[0].id};success++;
+      R[item.date+'_'+item.time_slot]={co:item.company,dur:item.duration,id:data[0].id};
+      success++;
     }catch(e){fail++;}
   }
   alert('✅ 登録完了！\n成功：'+success+'件 ／ 失敗：'+fail+'件');
