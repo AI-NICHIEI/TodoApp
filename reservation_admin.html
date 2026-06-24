@@ -300,7 +300,8 @@ async function loadSheetPreview(){
     importPreview.forEach(function(item){
       var skip=!!R[item.date+'_'+item.time_slot];
       var p=item.date.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);
-      var dow=new Date(item.date).getDay(),dayName=['日','月','火','水','木','金','土'][dow];
+      var p2=item.date.split('-');
+var dow=new Date(parseInt(p2[0]),parseInt(p2[1])-1,parseInt(p2[2])).getDay();,dayName=['日','月','火','水','木','金','土'][dow];
       h+='<div class="preview-row'+(skip?' skip':'')+'">'
         +'<div style="font-size:12px;font-weight:700;color:'+(skip?'#bbb':'#5A9A1F')+';min-width:110px">'+m+'月'+d+'日（'+dayName+'）</div>'
         +'<div style="font-size:13px;font-weight:700;color:'+(skip?'#bbb':'#1A6E9A')+';min-width:52px">'+item.time_slot+'</div>'
