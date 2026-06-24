@@ -39,7 +39,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .total-badge{background:#E8F7D0;border:2px solid #A8D96A;border-radius:10px;padding:10px 14px;margin-bottom:8px;font-size:14px;font-weight:700;color:#5A9A1F;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
 .bulk-bar{background:#FFE8E8;border:2px solid #FFBBBB;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .bulk-bar.hide{display:none}
-.slot-row{display:flex;align-items:center;border-radius:11px;padding:10px 14px;margin-bottom:7px;gap:10px}
+.slot-row{display:flex;align-items:center;border-radius:11px;padding:10px 14px;margin-bottom:7px;gap:8px}
 .slot-row.booked{background:#E8F7D0;border:2px solid #A8D96A}
 .slot-row.booked.s15{background:#D6F0FF;border-color:#89CFEE}
 .slot-row.booked.checked{background:#FFF0F0;border-color:#FFBBBB}
@@ -54,11 +54,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .slot-row.booked .sl-dur{background:#A8D96A;color:#fff}
 .slot-row.booked.s15 .sl-dur{background:#89CFEE;color:#fff}
 .slot-row.empty .sl-dur{background:#E8E8E8;color:#bbb}
-.sl-co{font-size:14px;font-weight:600;flex:1}
+.sl-co{font-size:14px;font-weight:600;flex:1;min-width:0}
 .slot-row.booked .sl-co{color:#333}
 .slot-row.empty .sl-co{color:#aaa;font-size:13px}
+.sl-edit{background:#D6F0FF;color:#1A6E9A;border:1.5px solid #89CFEE;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 .sl-add{background:#E8F7D0;color:#5A9A1F;border:1.5px solid #A8D96A;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
-.sl-del{background:#FFE8E8;color:#E05B5B;border:1.5px solid #FFBBBB;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.sl-del{background:#FFE8E8;color:#E05B5B;border:1.5px solid #FFBBBB;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 .week-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0;border:2px solid #A8D96A;border-radius:14px;overflow:hidden}
 .wg-col{border-right:1px solid #A8D96A}
 .wg-col:last-child{border-right:none}
@@ -119,7 +120,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="hdr">
     <div class="hdr-text">
       <h1>🛡 管理者画面 ｜ 🚛 日榮中間処理場 搬入予約</h1>
-      <p>予約の登録・確認・削除 ｜ 顧客マスタ管理 ｜ スプレッドシート取込</p>
+      <p>予約の登録・編集・削除 ｜ 顧客マスタ管理 ｜ スプレッドシート取込</p>
     </div>
     <span class="sync loading" id="sync-badge"><span class="spinner"></span> 接続中</span>
   </div>
@@ -148,7 +149,6 @@ const SHEET_NAME="R7.10月～";
 
 var R={},wk=1,sd=0,view='day',customers=[],importPreview=[];
 var DN=['月','火','水','木','金','土'];
-// 08:00 削除済み
 var SLOTS=[
   {t:'08:30',dur:'30'},{t:'09:00',dur:'30'},{t:'09:30',dur:'30'},
   {t:'10:00',dur:'30'},{t:'10:15',dur:'15'},{t:'10:30',dur:'30'},
@@ -219,36 +219,28 @@ function rTabs(){
 }
 function selD(i){sd=i;rTabs();rList();}
 
-// チェックボックス状態更新
 function updateBulkBar(){
   var checked=document.querySelectorAll('.sl-chk:checked');
   var bar=document.getElementById('bulk-bar');
   var cnt=document.getElementById('bulk-cnt');
   if(!bar||!cnt)return;
-  if(checked.length>0){
-    bar.className='bulk-bar';
-    cnt.textContent=checked.length+'件選択中';
-  }else{
-    bar.className='bulk-bar hide';
-  }
-  // 行の色も更新
+  bar.className=checked.length>0?'bulk-bar':'bulk-bar hide';
+  if(checked.length>0)cnt.textContent=checked.length+'件選択中';
   document.querySelectorAll('.sl-chk').forEach(function(chk){
     var row=chk.closest('.slot-row');
-    if(row){row.classList.toggle('checked',chk.checked);}
+    if(row)row.classList.toggle('checked',chk.checked);
   });
 }
 
 function rList(){
   var days=gw(wk),day=days[sd],ds=fmt(day),bk=cntBooked(ds);
   var h='<div class="day-title">📅 '+fj(day)+'（'+DN[sd]+'）</div>';
-  h+='<div class="total-badge">'
-    +'<span>📋 予約 '+bk+' 件 ／ 空き '+(SLOTS.length-bk)+' 枠</span>'
-    +'<button onclick="selectAllBooked(\''+ds+'\')" style="background:#E8F7D0;color:#5A9A1F;border:1.5px solid #A8D96A;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">全選択</button>'
+  h+='<div class="total-badge"><span>📋 予約 '+bk+' 件 ／ 空き '+(SLOTS.length-bk)+' 枠</span>'
+    +'<button onclick="selectAllBooked()" style="background:#E8F7D0;color:#5A9A1F;border:1.5px solid #A8D96A;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">全選択</button>'
     +'</div>';
-  // 一括削除バー
   h+='<div class="bulk-bar hide" id="bulk-bar">'
     +'<span id="bulk-cnt" style="font-size:13px;font-weight:700;color:#E05B5B;flex:1"></span>'
-    +'<button onclick="bulkDelete(\''+ds+'\')" style="background:#E05B5B;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer">🗑 一括削除</button>'
+    +'<button onclick="bulkDelete()" style="background:#E05B5B;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer">🗑 一括削除</button>'
     +'<button onclick="clearSelection()" style="background:#EFEFEF;color:#666;border:none;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer">選択解除</button>'
     +'</div>';
   SLOTS.forEach(function(s){
@@ -258,7 +250,8 @@ function rList(){
         +'<input type="checkbox" class="sl-chk" data-ds="'+ds+'" data-t="'+s.t+'" onchange="updateBulkBar()">'
         +'<div class="sl-time">'+s.t+'</div>'
         +'<div class="sl-dur">'+s.dur+'分</div>'
-        +'<div class="sl-co">🏢 '+esc(r.co)+(r.phone?'<span style="font-size:12px;color:#888;margin-left:8px">📞'+esc(r.phone)+'</span>':'')+'</div>'
+        +'<div class="sl-co">🏢 '+esc(r.co)+(r.phone?'<span style="font-size:11px;color:#888;margin-left:6px">📞'+esc(r.phone)+'</span>':'')+'</div>'
+        +'<button class="sl-edit" onclick="openEdit(\''+ds+'\',\''+s.t+'\')">✏️ 変更</button>'
         +'<button class="sl-del" onclick="confirmDel(\''+ds+'\',\''+s.t+'\')">🗑</button>'
         +'</div>';
     }else{
@@ -274,18 +267,15 @@ function rList(){
   document.getElementById('wrap').innerHTML=h;
 }
 
-function selectAllBooked(ds){
-  document.querySelectorAll('.sl-chk').forEach(function(chk){
-    if(chk.dataset.ds===ds)chk.checked=true;
-  });
+function selectAllBooked(){
+  document.querySelectorAll('.sl-chk').forEach(function(chk){chk.checked=true;});
   updateBulkBar();
 }
 function clearSelection(){
   document.querySelectorAll('.sl-chk').forEach(function(chk){chk.checked=false;});
   updateBulkBar();
 }
-
-async function bulkDelete(ds){
+async function bulkDelete(){
   var checked=document.querySelectorAll('.sl-chk:checked');
   if(!checked.length)return;
   if(!confirm(checked.length+'件の予約を削除しますか？'))return;
@@ -303,6 +293,38 @@ async function bulkDelete(ds){
   }
   alert('✅ 削除完了！\n成功：'+success+'件'+(fail>0?'\n失敗：'+fail+'件':''));
   rTabs();rList();
+}
+
+// ===== 予約編集 =====
+function openEdit(ds,t){
+  var r=R[ds+'_'+t];if(!r)return;
+  var p=ds.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);
+  var di=gw(wk).findIndex(function(day){return fmt(day)===ds;});
+  var col=SLOTS_15.includes(t)?'#1A6E9A':'#5A9A1F';
+  var opts='';
+  customers.forEach(function(c){opts+='<option value="'+esc(c.company)+'"'+(c.company===r.co?' selected':'')+'>'+esc(c.company)+'</option>';});
+  document.getElementById('modal').innerHTML=
+    '<div class="mbg" onclick="clM(event)"><div class="mbox">'
+    +'<div class="mttl">✏️ 予約を変更</div>'
+    +'<div class="mtb">📅 '+m+'月'+d+'日（'+(di>=0?DN[di]:'')+'）<br>🕐 <span style="color:'+col+';font-weight:700">'+t+'〜</span></div>'
+    +'<label>会社名を変更</label>'
+    +'<select id="edit-sel">'+opts+'</select>'
+    +'<div class="mbtns">'
+    +'<button class="mng" onclick="clM()">キャンセル</button>'
+    +'<button class="mok" id="edit-btn" onclick="doEdit(\''+ds+'\',\''+t+'\')">✅ 変更する</button>'
+    +'</div></div></div>';
+}
+async function doEdit(ds,t){
+  var co=document.getElementById('edit-sel').value;
+  if(!co){alert('会社名を選択してください');return;}
+  var r=R[ds+'_'+t];if(!r)return;
+  var btn=document.getElementById('edit-btn');if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 更新中...';}
+  try{
+    var{error}=await db.from('reservations').update({company:co}).eq('id',r.id);
+    if(error)throw error;
+    R[ds+'_'+t].co=co;
+    clM();rTabs();rList();
+  }catch(e){alert('更新エラー: '+e.message);if(btn){btn.disabled=false;btn.innerHTML='✅ 変更する';}}
 }
 
 function openAddBook(ds,t,dur){
@@ -330,7 +352,7 @@ function rWeek(){
   days.forEach(function(d,i){
     var ds=fmt(d),bk=cntBooked(ds);
     h+='<div class="wg-col"><div class="wg-head"><div class="wg-dn">'+DN[i]+'</div><div class="wg-dnum">'+d.getDate()+'</div><div><span class="wg-cnt">'+bk+'件</span></div></div>';
-    SLOTS.forEach(function(s){var r=R[ds+'_'+s.t],is15=s.dur==='15';if(r){h+='<div class="wg-slot booked'+(is15?' s15':'')+'" onclick="confirmDel(\''+ds+'\',\''+s.t+'\')" title="'+esc(r.co)+'"><div class="wg-slot-inner"><div class="wg-time">'+s.t+'</div><div class="wg-co">'+esc(r.co)+'</div></div></div>';}else{h+='<div class="wg-slot empty-slot" onclick="openAddBook(\''+ds+'\',\''+s.t+'\',\''+s.dur+'\')" title="タップして予約登録"><span style="color:#ccc;font-size:10px">○</span></div>';}});
+    SLOTS.forEach(function(s){var r=R[ds+'_'+s.t],is15=s.dur==='15';if(r){h+='<div class="wg-slot booked'+(is15?' s15':'')+'" onclick="openEdit(\''+ds+'\',\''+s.t+'\')" title="'+esc(r.co)+' ／ タップで変更"><div class="wg-slot-inner"><div class="wg-time">'+s.t+'</div><div class="wg-co">'+esc(r.co)+'</div></div></div>';}else{h+='<div class="wg-slot empty-slot" onclick="openAddBook(\''+ds+'\',\''+s.t+'\',\''+s.dur+'\')" title="タップして予約登録"><span style="color:#ccc;font-size:10px">○</span></div>';}});
     h+='</div>';
   });
   h+='</div></div>';
@@ -380,8 +402,7 @@ async function loadSheetPreview(){
     importPreview.forEach(function(item){
       var skip=!!R[item.date+'_'+item.time_slot];
       var p=item.date.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);
-      var p2=item.date.split('-');
-      var dow=new Date(parseInt(p2[0]),parseInt(p2[1])-1,parseInt(p2[2])).getDay();
+      var dow=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])).getDay();
       var dayName=['日','月','火','水','木','金','土'][dow];
       h+='<div class="preview-row'+(skip?' skip':'')+'">'
         +'<div style="font-size:12px;font-weight:700;color:'+(skip?'#bbb':'#5A9A1F')+';min-width:110px">'+m+'月'+d+'日（'+dayName+'）</div>'
@@ -421,7 +442,9 @@ function parseSheetData(rows){
     if(!matched){dates.push(null);return;}
     var y=yr;
     if(mo<nowM-3)y=yr+1;
-    dates.push(y+'-'+String(mo).padStart(2,'0')+'-'+String(dy).padStart(2,'0'));
+    // タイムゾーンずれ防止：日付文字列を直接組み立て
+    var ds=y+'-'+String(mo).padStart(2,'0')+'-'+String(dy).padStart(2,'0');
+    dates.push(ds);
   });
   for(var ri=3;ri<rows.length;ri++){
     var row=rows[ri]||[];
@@ -453,7 +476,10 @@ async function doImport(){
   for(var i=0;i<newItems.length;i++){
     var item=newItems[i];
     try{
-      var{data,error}=await db.from('reservations').insert([{date:item.date,time_slot:item.time_slot,company:item.company,duration:item.duration}]).select();
+      // タイムゾーンずれ防止：date型として文字列をそのまま渡す
+      var p=item.date.split('-');
+      var safeDate=parseInt(p[0])+'-'+p[1]+'-'+p[2];
+      var{data,error}=await db.from('reservations').insert([{date:safeDate,time_slot:item.time_slot,company:item.company,duration:item.duration}]).select();
       if(error){fail++;continue;}
       R[item.date+'_'+item.time_slot]={co:item.company,dur:item.duration,id:data[0].id};success++;
     }catch(e){fail++;}
