@@ -49,9 +49,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mttl{font-size:18px;font-weight:700;color:#5A9A1F;margin-bottom:8px}
 .mtb{font-size:14px;font-weight:600;color:#444;background:#E8F7D0;padding:12px 14px;border-radius:10px;margin-bottom:16px;line-height:1.7}
 .mbox label{font-size:13px;font-weight:700;color:#555;display:block;margin-bottom:5px}
-.mbox input{width:100%;padding:13px;border-radius:10px;border:2px solid #A8D96A;font-size:15px;font-family:inherit;background:#FAFEF4;color:#333;margin-bottom:16px}
+.mbox input{width:100%;padding:13px;border-radius:10px;border:2px solid #A8D96A;font-size:15px;font-family:inherit;background:#FAFEF4;color:#333;margin-bottom:10px}
 .mbox input:focus{outline:none;border-color:#7DBF3A}
-.mbtns{display:flex;gap:10px}
+.mbtns{display:flex;gap:10px;margin-top:6px}
 .mbtns button{flex:1;padding:14px;border-radius:12px;font-size:15px;font-weight:700;border:none;cursor:pointer}
 .mok{background:linear-gradient(120deg,#7DBF3A,#5BB8E8);color:#fff}
 .mng{background:#EFEFEF;color:#666}
@@ -63,19 +63,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(min-width:600px){
-  .hdr h1{font-size:20px}
-  .dnum{font-size:30px}
-  .dcnt{font-size:14px}
+  .hdr h1{font-size:20px}.dnum{font-size:30px}.dcnt{font-size:14px}
   .sgrid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
-  .sbtn{padding:20px 10px}
-  .stime{font-size:17px}
-  .scirc{font-size:34px}
+  .sbtn{padding:20px 10px}.stime{font-size:17px}.scirc{font-size:34px}
 }
 @media(min-width:1024px){
   .hdr h1{font-size:22px}
   .sgrid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
-  .dtab{padding:16px 6px}
-  .dnum{font-size:34px}
+  .dtab{padding:16px 6px}.dnum{font-size:34px}
 }
 </style>
 </head>
@@ -100,7 +95,7 @@ const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSe
 var R={},sd=0;
 var DN=['月','火','水','木','金','土'];
 var SLOTS=[
-  {t:'08:00',dur:'30'},{t:'08:30',dur:'30'},{t:'09:00',dur:'30'},{t:'09:30',dur:'30'},
+  {t:'08:30',dur:'30'},{t:'09:00',dur:'30'},{t:'09:30',dur:'30'},
   {t:'10:00',dur:'30'},{t:'10:15',dur:'15'},{t:'10:30',dur:'30'},
   {t:'11:00',dur:'30'},{t:'11:15',dur:'15'},{t:'11:30',dur:'30'},
   {t:'13:00',dur:'30'},{t:'13:30',dur:'30'},{t:'13:45',dur:'15'},
@@ -166,6 +161,8 @@ function opB(ds,t,dur){
     +'<div class="mtb">📅 '+m+'月'+d+'日（'+DN[sd]+'）<br>🕐 <span style="color:'+col+';font-weight:700">'+t+'〜（'+dur+'分枠）</span></div>'
     +'<label>会社名 <span style="color:#E05B5B">*必須</span></label>'
     +'<input id="ci" type="text" placeholder="例：株式会社○○建設" onkeydown="if(event.key===\'Enter\')dB(\''+ds+'\',\''+t+'\',\''+dur+'\')">'
+    +'<label>電話番号（連絡先）</label>'
+    +'<input id="ph" type="tel" placeholder="例：03-1234-5678">'
     +'<div class="mbtns"><button class="mng" onclick="clM()">キャンセル</button>'
     +'<button class="mok" id="book-btn" onclick="dB(\''+ds+'\',\''+t+'\',\''+dur+'\')">✅ 予約する</button>'
     +'</div></div></div>';
@@ -173,11 +170,12 @@ function opB(ds,t,dur){
 }
 async function dB(ds,t,dur){
   var co=(document.getElementById('ci').value||'').trim();
+  var ph=(document.getElementById('ph').value||'').trim();
   if(!co){alert('会社名を入力してください');return;}
   var btn=document.getElementById('book-btn');
   if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 送信中...';}
   try{
-    var{data,error}=await db.from('reservations').insert([{date:ds,time_slot:t,company:co,duration:dur}]).select();
+    var{data,error}=await db.from('reservations').insert([{date:ds,time_slot:t,company:co,phone:ph||null,duration:dur}]).select();
     if(error)throw error;
     R[ds+'_'+t]={co:co,dur:dur,id:data[0].id};
     document.getElementById('modal').innerHTML=
