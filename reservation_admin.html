@@ -193,7 +193,11 @@ async function loadAll(){
     ]);
     if(rv.error)throw rv.error;
     if(cv.error)throw cv.error;
-    R={};(rv.data||[]).forEach(function(r){R[r.date+'_'+r.time_slot]={co:r.company,dur:r.duration,id:r.id,phone:r.phone||''};});
+    R={};(rv.data||[]).forEach(function(r){
+  // dateが"2026-06-29T..."形式で返る場合に備えてT以降を切り捨て
+  var dateKey=String(r.date).split('T')[0];
+  R[dateKey+'_'+r.time_slot]={co:r.company,dur:r.duration,id:r.id,phone:r.phone||''};
+});
     customers=cv.data||[];
     setBadge('ok');
   }catch(e){console.error(e);setBadge('err');}
