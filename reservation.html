@@ -107,7 +107,10 @@ var SLOTS=[
 
 function getNextWeekDays(){
   var t=new Date();t.setHours(0,0,0,0);
-  var dw=t.getDay(),dn=dw===0?1:8-dw,nm=new Date(t);
+  var dw=t.getDay();
+  // 日曜(0)→翌日月曜から、月〜土(1-6)→来週月曜から
+  var dn=dw===0?1:8-dw;
+  var nm=new Date(t);
   nm.setDate(t.getDate()+dn);
   return Array.from({length:6},function(_,i){var d=new Date(nm);d.setDate(nm.getDate()+i);return d;});
 }
