@@ -22,8 +22,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .wkbtn{background:#7DBF3A;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer}
 .wkbtn:disabled{background:#ccc}
 .wklbl{font-size:14px;font-weight:700;color:#5A9A1F}
-.view-tabs{display:flex;background:#fff;border-bottom:2px solid #A8D96A;flex-shrink:0}
-.vtab{flex:1;padding:12px;text-align:center;cursor:pointer;border:none;background:transparent;border-bottom:3px solid transparent;margin-bottom:-2px;font-size:13px;font-weight:700;color:#999;transition:all .15s}
+.view-tabs{display:flex;background:#fff;border-bottom:2px solid #A8D96A;flex-shrink:0;overflow-x:auto}
+.vtab{flex:1;min-width:80px;padding:11px 8px;text-align:center;cursor:pointer;border:none;background:transparent;border-bottom:3px solid transparent;margin-bottom:-2px;font-size:12px;font-weight:700;color:#999;transition:all .15s;white-space:nowrap}
 .vtab.on{border-bottom-color:#7DBF3A;color:#5A9A1F;background:#E8F7D0}
 .dtabs{display:flex;background:#fff;border-bottom:3px solid #A8D96A;flex-shrink:0}
 .dtab{flex:1;padding:12px 4px;text-align:center;cursor:pointer;border:none;background:transparent;border-bottom:4px solid transparent;margin-bottom:-3px;transition:all .15s}
@@ -55,8 +55,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .slot-row.empty .sl-co{color:#aaa;font-size:13px}
 .sl-add{background:#E8F7D0;color:#5A9A1F;border:1.5px solid #A8D96A;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
 .sl-del{background:#FFE8E8;color:#E05B5B;border:1.5px solid #FFBBBB;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
-
-/* 週間一覧 */
 .week-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0;border:2px solid #A8D96A;border-radius:14px;overflow:hidden}
 .wg-col{border-right:1px solid #A8D96A}
 .wg-col:last-child{border-right:none}
@@ -75,23 +73,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .wg-co{font-size:11px;font-weight:700;color:#5A9A1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .wg-slot.booked.s15 .wg-co{color:#1A6E9A}
 .wg-slot-inner{width:100%;overflow:hidden}
-
-/* 顧客マスタ */
-.customer-section{max-width:600px}
 .section-title{font-size:16px;font-weight:700;color:#5A9A1F;margin-bottom:14px;display:flex;align-items:center;gap:8px}
-.add-customer-box{background:#E8F7D0;border:2px solid #A8D96A;border-radius:12px;padding:16px;margin-bottom:20px}
-.add-customer-box label{font-size:13px;font-weight:700;color:#555;display:block;margin-bottom:6px}
+.add-box{background:#E8F7D0;border:2px solid #A8D96A;border-radius:12px;padding:16px;margin-bottom:20px}
+.add-box label{font-size:13px;font-weight:700;color:#555;display:block;margin-bottom:6px}
 .add-row{display:flex;gap:10px}
 .add-row input{flex:1;padding:12px;border-radius:10px;border:2px solid #A8D96A;font-size:15px;font-family:inherit;background:#fff;color:#333}
 .add-row input:focus{outline:none;border-color:#7DBF3A}
 .add-row button{padding:12px 20px;border-radius:10px;border:none;background:linear-gradient(120deg,#7DBF3A,#5BB8E8);color:#fff;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
-.customer-list{display:flex;flex-direction:column;gap:8px}
+.customer-list{display:flex;flex-direction:column;gap:8px;max-width:600px}
 .customer-row{background:#fff;border:2px solid #D8EDB8;border-radius:11px;padding:12px 16px;display:flex;align-items:center;gap:10px}
 .customer-name{font-size:15px;font-weight:700;color:#333;flex:1}
 .customer-del{background:#FFE8E8;color:#E05B5B;border:1.5px solid #FFBBBB;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer}
-.empty-customers{text-align:center;padding:30px;color:#aaa;font-size:14px}
-
-/* モーダル */
+.import-info{background:#E8F7D0;border:2px solid #A8D96A;border-radius:12px;padding:16px;margin-bottom:16px;font-size:13px;color:#555;line-height:1.8}
+.preview-table{background:#fff;border:2px solid #A8D96A;border-radius:12px;overflow:hidden;margin-bottom:14px}
+.preview-head{background:#7DBF3A;color:#fff;padding:12px 16px;font-weight:700;font-size:14px}
+.preview-list{max-height:400px;overflow-y:auto}
+.preview-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #E8F7D0}
+.preview-row.skip{background:#f9f9f9;opacity:.6}
 .mbg{position:fixed;inset:0;background:rgba(0,0,0,.52);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
 .mbox{background:#fff;border-radius:18px;padding:24px;width:100%;max-width:400px;box-shadow:0 16px 60px rgba(0,0,0,.25)}
 .mttl{font-size:18px;font-weight:700;color:#5A9A1F;margin-bottom:8px}
@@ -106,19 +104,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mok-del{background:#FFE8E8;color:#E05B5B;border:2px solid #FFBBBB}
 .minfo{background:#E8F7D0;border-radius:10px;padding:12px;font-size:14px;color:#555;line-height:1.7;margin-bottom:14px}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+.spinner-g{display:inline-block;width:20px;height:20px;border:3px solid #E8F7D0;border-top-color:#7DBF3A;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-@media(min-width:600px){
-  .hdr h1{font-size:20px}
-  .dnum{font-size:30px}
-  .dbk{font-size:14px}
-  .vtab{font-size:14px}
-  .wg-head .wg-dnum{font-size:24px}
-}
-@media(min-width:1024px){
-  .hdr h1{font-size:22px}
-  .dtab{padding:16px 6px}
-  .dnum{font-size:34px}
-}
+@media(min-width:600px){.hdr h1{font-size:20px}.dnum{font-size:30px}.vtab{font-size:13px;padding:12px}}
+@media(min-width:1024px){.hdr h1{font-size:22px}.dtab{padding:16px 6px}.dnum{font-size:34px}}
 </style>
 </head>
 <body>
@@ -126,7 +115,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="hdr">
     <div class="hdr-text">
       <h1>🛡 管理者画面 ｜ 🚛 日榮中間処理場 搬入予約</h1>
-      <p>予約の登録・確認・削除 ｜ 顧客マスタ管理</p>
+      <p>予約の登録・確認・削除 ｜ 顧客マスタ管理 ｜ スプレッドシート取込</p>
     </div>
     <span class="sync loading" id="sync-badge"><span class="spinner"></span> 接続中</span>
   </div>
@@ -136,9 +125,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="wkbtn" id="nb" onclick="chW(1)">次週 ▶</button>
   </div>
   <div class="view-tabs">
-    <button class="vtab on" id="vtab-day" onclick="switchView('day')">📅 日別ビュー</button>
+    <button class="vtab on" id="vtab-day" onclick="switchView('day')">📅 日別</button>
     <button class="vtab" id="vtab-week" onclick="switchView('week')">📋 週間一覧</button>
     <button class="vtab" id="vtab-customers" onclick="switchView('customers')">👥 顧客マスタ</button>
+    <button class="vtab" id="vtab-import" onclick="switchView('import')">📥 SS取込</button>
   </div>
   <div class="dtabs" id="dtabs"></div>
   <div class="wrap" id="wrap"></div>
@@ -148,9 +138,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 const SUPABASE_URL="https://uzjftccxoipspazrtuvl.supabase.co";
 const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4NjQ1NTYsImV4cCI6MjA5NTQ0MDU1Nn0.qsXWRTk2hwK4JtIBoNuq-8OXPJYb3-Q4BPugBg2tzd8";
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false}});
+const SHEET_ID="1JHytiMqKtWR1QW5tGN3aCmPWzQ629lrhTqelfgFkgo4";
+const SHEET_API_KEY="AIzaSyBKCXPVcD82zTdISGhCm3Zc_z0RvhUzqVU";
+const SHEET_NAME="R7.10月～";
 
-var R={},wk=1,sd=0,view='day';
-var customers=[];
+var R={},wk=1,sd=0,view='day',customers=[],importPreview=[];
 var DN=['月','火','水','木','金','土'];
 var SLOTS=[
   {t:'08:00',dur:'30'},{t:'08:30',dur:'30'},{t:'09:00',dur:'30'},{t:'09:30',dur:'30'},
@@ -160,6 +152,19 @@ var SLOTS=[
   {t:'14:00',dur:'30'},{t:'14:30',dur:'30'},{t:'14:45',dur:'15'},
   {t:'15:00',dur:'30'},{t:'15:30',dur:'30'},{t:'16:00',dur:'30'}
 ];
+var TIME_MAP={
+  '8:00':'08:00','8:30':'08:30','9:00':'09:00','9:30':'09:30',
+  '10:00':'10:00','10:15':'10:15','10:30':'10:30',
+  '11:00':'11:00','11:15':'11:15','11:30':'11:30',
+  '1:00':'13:00','13:00':'13:00','1:30':'13:30','13:30':'13:30',
+  '1:45':'13:45','13:45':'13:45',
+  '2:00':'14:00','14:00':'14:00','2:30':'14:30','14:30':'14:30',
+  '2:45':'14:45','14:45':'14:45',
+  '3:00':'15:00','15:00':'15:00','3:30':'15:30','15:30':'15:30',
+  '4:00':'16:00','16:00':'16:00'
+};
+var SLOTS_15=['10:15','11:15','13:45','14:45'];
+var SKIP_WORDS=['業 者 名','業者名','午前','午後','合計','持込','曜日','時間','仙台環境','日本産業'];
 
 function gw(o){var t=new Date();t.setHours(0,0,0,0);var dw=t.getDay(),df=dw===0?-6:1-dw,mn=new Date(t);mn.setDate(t.getDate()+df+o*7);return Array.from({length:6},function(_,i){var d=new Date(mn);d.setDate(mn.getDate()+i);return d;});}
 function fmt(d){return d.toISOString().split('T')[0];}
@@ -178,233 +183,222 @@ async function loadAll(){
     ]);
     if(rv.error)throw rv.error;
     if(cv.error)throw cv.error;
-    R={};(rv.data||[]).forEach(function(r){R[r.date+'_'+r.time_slot]={co:r.company,dur:r.duration,id:r.id};});
-    customers=(cv.data||[]);
+    R={};(rv.data||[]).forEach(function(r){R[r.date+'_'+r.time_slot]={co:r.company,dur:r.duration,id:r.id,phone:r.phone||''};});
+    customers=cv.data||[];
     setBadge('ok');
   }catch(e){console.error(e);setBadge('err');}
   render();
 }
 
-async function loadCustomers(){
-  try{
-    var{data,error}=await db.from('customers').select('*').order('company',{ascending:true});
-    if(error)throw error;
-    customers=data||[];
-  }catch(e){console.error(e);}
-}
-
 function chW(d){wk+=d;sd=0;loadAll();}
-function upd(){
-  var days=gw(wk);
-  document.getElementById('wlbl').textContent=fj(days[0])+'〜'+fj(days[5]);
-  document.getElementById('pb').disabled=wk<=1;
-  document.getElementById('nb').disabled=wk>=4;
-}
+function upd(){var days=gw(wk);document.getElementById('wlbl').textContent=fj(days[0])+'〜'+fj(days[5]);document.getElementById('pb').disabled=wk<=1;document.getElementById('nb').disabled=wk>=4;}
 
 function switchView(v){
   view=v;
-  ['day','week','customers'].forEach(function(x){
-    document.getElementById('vtab-'+x).className='vtab'+(v===x?' on':'');
-  });
-  var showNav=v!=='customers';
-  document.getElementById('wknav').style.display=showNav?'flex':'none';
+  ['day','week','customers','import'].forEach(function(x){document.getElementById('vtab-'+x).className='vtab'+(v===x?' on':'');});
+  document.getElementById('wknav').style.display=(v==='day'||v==='week')?'flex':'none';
   document.getElementById('dtabs').style.display=v==='day'?'flex':'none';
   render();
 }
-
 function render(){
   if(view==='day'){upd();rTabs();rList();}
   else if(view==='week'){upd();rWeek();}
-  else{rCustomers();}
+  else if(view==='customers'){rCustomers();}
+  else{rImport();}
 }
 
-// ===== 日別ビュー =====
 function rTabs(){
   var days=gw(wk),h='';
-  days.forEach(function(d,i){
-    var ds=fmt(d),bk=cntBooked(ds);
-    h+='<button class="dtab'+(i===sd?' on':'')+'" onclick="selD('+i+')">'
-      +'<div class="dn">'+DN[i]+'</div><div class="dnum">'+d.getDate()+'</div>'
-      +'<div><span class="dbk'+(bk===0?' z':'')+'">'+bk+'件</span></div></button>';
-  });
+  days.forEach(function(d,i){var ds=fmt(d),bk=cntBooked(ds);h+='<button class="dtab'+(i===sd?' on':'')+'" onclick="selD('+i+')">'+'<div class="dn">'+DN[i]+'</div><div class="dnum">'+d.getDate()+'</div>'+'<div><span class="dbk'+(bk===0?' z':'')+'">'+bk+'件</span></div></button>';});
   document.getElementById('dtabs').innerHTML=h;
 }
 function selD(i){sd=i;rTabs();rList();}
 
 function rList(){
-  var days=gw(wk),day=days[sd],ds=fmt(day);
-  var bk=cntBooked(ds);
-  var h='<div class="day-title">📅 '+fj(day)+'（'+DN[sd]+'）</div>';
-  h+='<div class="total-badge">📋 予約 '+bk+' 件 ／ 空き '+(SLOTS.length-bk)+' 枠</div>';
+  var days=gw(wk),day=days[sd],ds=fmt(day),bk=cntBooked(ds);
+  var h='<div class="day-title">📅 '+fj(day)+'（'+DN[sd]+'）</div>'+'<div class="total-badge">📋 予約 '+bk+' 件 ／ 空き '+(SLOTS.length-bk)+' 枠</div>';
   SLOTS.forEach(function(s){
-    var r=R[ds+'_'+s.t];
-    var is15=s.dur==='15';
+    var r=R[ds+'_'+s.t],is15=s.dur==='15';
     if(r){
-      h+='<div class="slot-row booked'+(is15?' s15':'')+'">'
-        +'<div class="sl-time">'+s.t+'</div>'
-        +'<div class="sl-dur">'+s.dur+'分</div>'
-        +'<div class="sl-co">🏢 '+esc(r.co)+'</div>'
-        +'<button class="sl-del" onclick="confirmDel(\''+ds+'\',\''+s.t+'\')">🗑 削除</button>'
-        +'</div>';
+      h+='<div class="slot-row booked'+(is15?' s15':'')+'">'+'<div class="sl-time">'+s.t+'</div>'+'<div class="sl-dur">'+s.dur+'分</div>'+'<div class="sl-co">🏢 '+esc(r.co)+(r.phone?'<span style="font-size:12px;color:#888;margin-left:8px">📞'+esc(r.phone)+'</span>':'')+'</div>'+'<button class="sl-del" onclick="confirmDel(\''+ds+'\',\''+s.t+'\')">🗑 削除</button></div>';
     }else{
-      h+='<div class="slot-row empty'+(is15?' s15':'')+'" onclick="openAddBook(\''+ds+'\',\''+s.t+'\',\''+s.dur+'\')">'
-        +'<div class="sl-time">'+s.t+'</div>'
-        +'<div class="sl-dur">'+s.dur+'分</div>'
-        +'<div class="sl-co">空き ― タップして予約登録</div>'
-        +'<button class="sl-add" onclick="event.stopPropagation();openAddBook(\''+ds+'\',\''+s.t+'\',\''+s.dur+'\')">＋ 予約</button>'
-        +'</div>';
+      h+='<div class="slot-row empty'+(is15?' s15':'')+'" onclick="openAddBook(\''+ds+'\',\''+s.t+'\',\''+s.dur+'\')">'+'<div class="sl-time">'+s.t+'</div>'+'<div class="sl-dur">'+s.dur+'分</div>'+'<div class="sl-co">空き ― タップして予約登録</div>'+'<button class="sl-add" onclick="event.stopPropagation();openAddBook(\''+ds+'\',\''+s.t+'\',\''+s.dur+'\')">＋ 予約</button></div>';
     }
   });
   document.getElementById('wrap').innerHTML=h;
 }
 
-// ===== 予約登録モーダル（管理者用・プルダウン） =====
 function openAddBook(ds,t,dur){
   var p=ds.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);
-  var dayIdx=gw(wk).findIndex(function(day){return fmt(day)===ds;});
-  var dayName=dayIdx>=0?DN[dayIdx]:'';
+  var di=gw(wk).findIndex(function(day){return fmt(day)===ds;});
   var col=dur==='15'?'#1A6E9A':'#5A9A1F';
   var opts='<option value="">-- 選択してください --</option>';
   customers.forEach(function(c){opts+='<option value="'+esc(c.company)+'">'+esc(c.company)+'</option>';});
-  document.getElementById('modal').innerHTML=
-    '<div class="mbg" onclick="clM(event)"><div class="mbox">'
-    +'<div class="mttl">＋ 予約登録</div>'
-    +'<div class="mtb">📅 '+m+'月'+d+'日（'+dayName+'）<br>🕐 <span style="color:'+col+';font-weight:700">'+t+'〜（'+dur+'分枠）</span></div>'
-    +'<label>会社名を選択 <span style="color:#E05B5B">*必須</span></label>'
-    +'<select id="co-sel">'+opts+'</select>'
-    +'<div class="mbtns">'
-    +'<button class="mng" onclick="clM()">キャンセル</button>'
-    +'<button class="mok" id="add-btn" onclick="doAddBook(\''+ds+'\',\''+t+'\',\''+dur+'\')">✅ 登録する</button>'
-    +'</div></div></div>';
+  document.getElementById('modal').innerHTML='<div class="mbg" onclick="clM(event)"><div class="mbox"><div class="mttl">＋ 予約登録</div><div class="mtb">📅 '+m+'月'+d+'日（'+(di>=0?DN[di]:'')+'）<br>🕐 <span style="color:'+col+';font-weight:700">'+t+'〜（'+dur+'分枠）</span></div><label>会社名を選択 <span style="color:#E05B5B">*必須</span></label><select id="co-sel">'+opts+'</select><div class="mbtns"><button class="mng" onclick="clM()">キャンセル</button><button class="mok" id="add-btn" onclick="doAddBook(\''+ds+'\',\''+t+'\',\''+dur+'\')">✅ 登録する</button></div></div></div>';
 }
-
 async function doAddBook(ds,t,dur){
   var co=document.getElementById('co-sel').value;
   if(!co){alert('会社名を選択してください');return;}
-  var btn=document.getElementById('add-btn');
-  if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 登録中...';}
+  var btn=document.getElementById('add-btn');if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 登録中...';}
   try{
     var{data,error}=await db.from('reservations').insert([{date:ds,time_slot:t,company:co,duration:dur}]).select();
     if(error)throw error;
-    R[ds+'_'+t]={co:co,dur:dur,id:data[0].id};
-    clM();rTabs();rList();
-    var p=ds.split('-');
-    alert('✅ 予約登録完了！\n'+parseInt(p[1])+'月'+parseInt(p[2])+'日 '+t+'〜\n'+co);
-  }catch(e){
-    if(e.message&&e.message.includes('unique')){alert('この時間枠はすでに予約済みです。');}
-    else{alert('エラー: '+e.message);}
-    if(btn){btn.disabled=false;btn.innerHTML='✅ 登録する';}
-  }
+    R[ds+'_'+t]={co:co,dur:dur,id:data[0].id};clM();rTabs();rList();
+    var p=ds.split('-');alert('✅ 予約登録完了！\n'+parseInt(p[1])+'月'+parseInt(p[2])+'日 '+t+'〜\n'+co);
+  }catch(e){if(e.message&&e.message.includes('unique')){alert('この時間枠はすでに予約済みです。');}else{alert('エラー: '+e.message);}if(btn){btn.disabled=false;btn.innerHTML='✅ 登録する';}}
 }
 
-// ===== 週間一覧 =====
 function rWeek(){
-  var days=gw(wk);
-  var h='<div style="overflow-x:auto"><div class="week-grid" style="min-width:480px">';
+  var days=gw(wk),h='<div style="overflow-x:auto"><div class="week-grid" style="min-width:480px">';
   days.forEach(function(d,i){
     var ds=fmt(d),bk=cntBooked(ds);
-    h+='<div class="wg-col"><div class="wg-head">'
-      +'<div class="wg-dn">'+DN[i]+'</div>'
-      +'<div class="wg-dnum">'+d.getDate()+'</div>'
-      +'<div><span class="wg-cnt">'+bk+'件</span></div>'
-      +'</div>';
-    SLOTS.forEach(function(s){
-      var r=R[ds+'_'+s.t],is15=s.dur==='15';
-      if(r){
-        h+='<div class="wg-slot booked'+(is15?' s15':'')+'" onclick="confirmDel(\''+ds+'\',\''+s.t+'\')" title="'+esc(r.co)+' ／ 削除するにはタップ">'
-          +'<div class="wg-slot-inner">'
-          +'<div class="wg-time">'+s.t+'</div>'
-          +'<div class="wg-co">'+esc(r.co)+'</div>'
-          +'</div></div>';
-      }else{
-        h+='<div class="wg-slot empty-slot" onclick="openAddBook(\''+ds+'\',\''+s.t+'\',\''+s.dur+'\')" title="タップして予約登録"><span style="color:#ccc;font-size:10px">○</span></div>';
-      }
-    });
+    h+='<div class="wg-col"><div class="wg-head"><div class="wg-dn">'+DN[i]+'</div><div class="wg-dnum">'+d.getDate()+'</div><div><span class="wg-cnt">'+bk+'件</span></div></div>';
+    SLOTS.forEach(function(s){var r=R[ds+'_'+s.t],is15=s.dur==='15';if(r){h+='<div class="wg-slot booked'+(is15?' s15':'')+'" onclick="confirmDel(\''+ds+'\',\''+s.t+'\')" title="'+esc(r.co)+'"><div class="wg-slot-inner"><div class="wg-time">'+s.t+'</div><div class="wg-co">'+esc(r.co)+'</div></div></div>';}else{h+='<div class="wg-slot empty-slot" onclick="openAddBook(\''+ds+'\',\''+s.t+'\',\''+s.dur+'\')" title="タップして予約登録"><span style="color:#ccc;font-size:10px">○</span></div>';}});
     h+='</div>';
   });
   h+='</div></div>';
   document.getElementById('wrap').innerHTML=h;
 }
 
-// ===== 顧客マスタ =====
 function rCustomers(){
-  document.getElementById('dtabs').style.display='none';
-  var h='<div class="customer-section">'
-    +'<div class="section-title">👥 顧客マスタ管理</div>'
-    +'<div class="add-customer-box">'
-    +'<label>会社名を追加</label>'
-    +'<div class="add-row">'
-    +'<input id="new-co" type="text" placeholder="例：株式会社○○建設" onkeydown="if(event.key===\'Enter\')addCustomer()">'
-    +'<button onclick="addCustomer()">＋ 追加</button>'
-    +'</div></div>'
-    +'<div class="section-title" style="margin-top:4px">登録済み会社一覧（'+customers.length+'社）</div>'
-    +'<div class="customer-list">';
-  if(!customers.length){
-    h+='<div class="empty-customers">まだ会社が登録されていません</div>';
-  }else{
-    customers.forEach(function(c){
-      h+='<div class="customer-row">'
-        +'<div class="customer-name">🏢 '+esc(c.company)+'</div>'
-        +'<button class="customer-del" onclick="delCustomer('+c.id+',\''+esc(c.company)+'\')">🗑 削除</button>'
-        +'</div>';
-    });
-  }
+  var h='<div style="max-width:600px"><div class="section-title">👥 顧客マスタ管理</div><div class="add-box"><label>会社名を追加</label><div class="add-row"><input id="new-co" type="text" placeholder="例：株式会社○○建設" onkeydown="if(event.key===\'Enter\')addCustomer()"><button onclick="addCustomer()">＋ 追加</button></div></div><div class="section-title">登録済み会社一覧（'+customers.length+'社）</div><div class="customer-list">';
+  if(!customers.length){h+='<div style="text-align:center;padding:30px;color:#aaa">まだ登録されていません</div>';}
+  else{customers.forEach(function(c){h+='<div class="customer-row"><div class="customer-name">🏢 '+esc(c.company)+'</div><button class="customer-del" onclick="delCustomer('+c.id+',\''+esc(c.company)+'\')">🗑 削除</button></div>';});}
   h+='</div></div>';
   document.getElementById('wrap').innerHTML=h;
   setTimeout(function(){var e=document.getElementById('new-co');if(e)e.focus();},80);
 }
-
 async function addCustomer(){
-  var inp=document.getElementById('new-co');
-  var co=(inp?inp.value:'').trim();
+  var inp=document.getElementById('new-co'),co=(inp?inp.value:'').trim();
   if(!co){alert('会社名を入力してください');return;}
   try{
     var{data,error}=await db.from('customers').insert([{company:co}]).select();
-    if(error){
-      if(error.message.includes('unique')){alert('この会社名はすでに登録されています。');}
-      else{alert('エラー: '+error.message);}
-      return;
-    }
-    customers.push(data[0]);
-    customers.sort(function(a,b){return a.company.localeCompare(b.company,'ja');});
-    if(inp)inp.value='';
-    rCustomers();
+    if(error){if(error.message.includes('unique')){alert('この会社名はすでに登録されています。');}else{alert('エラー: '+error.message);}return;}
+    customers.push(data[0]);customers.sort(function(a,b){return a.company.localeCompare(b.company,'ja');});
+    if(inp)inp.value='';rCustomers();
   }catch(e){alert('エラー: '+e.message);}
 }
-
 async function delCustomer(id,name){
   if(!confirm('「'+name+'」を削除しますか？'))return;
-  try{
-    var{error}=await db.from('customers').delete().eq('id',id);
-    if(error)throw error;
-    customers=customers.filter(function(c){return c.id!==id;});
-    rCustomers();
-  }catch(e){alert('削除エラー: '+e.message);}
+  try{var{error}=await db.from('customers').delete().eq('id',id);if(error)throw error;customers=customers.filter(function(c){return c.id!==id;});rCustomers();}
+  catch(e){alert('削除エラー: '+e.message);}
 }
 
-// ===== 予約削除 =====
+function rImport(){
+  document.getElementById('wrap').innerHTML='<div style="max-width:800px"><div class="section-title">📥 スプレッドシート取込</div><div class="import-info">📋 スプレッドシート「'+esc(SHEET_NAME)+'」から予約データを読み込みます。<br>⚠️ すでに登録済みの時間枠はスキップされます。</div><button onclick="loadSheetPreview()" style="padding:13px 28px;border-radius:10px;border:none;background:linear-gradient(120deg,#7DBF3A,#5BB8E8);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:16px">📥 スプレッドシートを読み込む</button><div id="preview-area"></div></div>';
+}
+
+async function loadSheetPreview(){
+  document.getElementById('preview-area').innerHTML='<div style="padding:24px;color:#888;text-align:center"><span class="spinner-g"></span><div style="margin-top:8px;font-size:14px">読み込み中...</div></div>';
+  try{
+    var url='https://sheets.googleapis.com/v4/spreadsheets/'+SHEET_ID+'/values/'+encodeURIComponent(SHEET_NAME)+'?key='+SHEET_API_KEY;
+    var res=await fetch(url);
+    if(!res.ok){var ej=await res.json().catch(function(){return{};});throw new Error((ej.error&&ej.error.message)||'HTTPエラー: '+res.status);}
+    var rows=(await res.json()).values||[];
+    importPreview=parseSheetData(rows);
+    if(!importPreview.length){document.getElementById('preview-area').innerHTML='<div style="background:#FFE8E8;border:2px solid #FFBBBB;border-radius:10px;padding:16px;color:#E05B5B">データが見つかりませんでした。</div>';return;}
+    var newItems=importPreview.filter(function(i){return !R[i.date+'_'+i.time_slot];});
+    var skipItems=importPreview.filter(function(i){return !!R[i.date+'_'+i.time_slot];});
+    var h='<div class="preview-table"><div class="preview-head">📋 読み込み結果：'+importPreview.length+'件（新規：'+newItems.length+'件 ／ スキップ：'+skipItems.length+'件）</div><div class="preview-list">';
+    importPreview.forEach(function(item){
+      var skip=!!R[item.date+'_'+item.time_slot];
+      var p=item.date.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);
+      var dow=new Date(item.date).getDay(),dayName=['日','月','火','水','木','金','土'][dow];
+      h+='<div class="preview-row'+(skip?' skip':'')+'">'
+        +'<div style="font-size:12px;font-weight:700;color:'+(skip?'#bbb':'#5A9A1F')+';min-width:110px">'+m+'月'+d+'日（'+dayName+'）</div>'
+        +'<div style="font-size:13px;font-weight:700;color:'+(skip?'#bbb':'#1A6E9A')+';min-width:52px">'+item.time_slot+'</div>'
+        +'<div style="font-size:13px;flex:1;color:'+(skip?'#bbb':'#333')+'">🏢 '+esc(item.company)+'</div>'
+        +'<div style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:8px;background:'+(skip?'#eee':'#E8F7D0')+';color:'+(skip?'#aaa':'#5A9A1F')+'">'+(skip?'スキップ':'新規')+'</div>'
+        +'</div>';
+    });
+    h+='</div></div>';
+    if(newItems.length>0){h+='<button id="import-btn" onclick="doImport()" style="padding:14px 28px;border-radius:12px;border:none;background:linear-gradient(120deg,#7DBF3A,#5BB8E8);color:#fff;font-size:15px;font-weight:700;cursor:pointer">✅ '+newItems.length+'件を一括登録する</button>';}
+    else{h+='<div style="background:#FFF8E6;border:2px solid #FFE4A0;border-radius:10px;padding:14px;font-size:14px;color:#8B5500">すべてのデータがすでに登録済みです。</div>';}
+    document.getElementById('preview-area').innerHTML=h;
+  }catch(e){document.getElementById('preview-area').innerHTML='<div style="background:#FFE8E8;border:2px solid #FFBBBB;border-radius:10px;padding:16px;color:#E05B5B">❌ エラー: '+esc(e.message)+'<br><br><span style="font-size:12px">・スプレッドシートが「リンクを知っている全員が閲覧可能」になっているか確認してください</span></div>';}
+}
+
+function parseSheetData(rows){
+  var results=[],currentYear=new Date().getFullYear();
+  if(!rows||rows.length<3)return results;
+
+  // 日付行を探す（「29日」「6月」が含まれる行）
+  var dateRowIdx=-1,monthRowIdx=-1;
+  for(var ri=0;ri<Math.min(rows.length,8);ri++){
+    var rs=(rows[ri]||[]).join('');
+    if(rs.match(/\d+日/)&&rs.match(/\d+月/)){dateRowIdx=ri;monthRowIdx=ri;break;}
+    if(rs.match(/\d+月/)&&monthRowIdx<0)monthRowIdx=ri;
+    if(rs.match(/\d+日/)&&monthRowIdx>=0){dateRowIdx=ri;break;}
+  }
+  if(dateRowIdx<0){dateRowIdx=1;monthRowIdx=0;}
+
+  var dateRow=rows[dateRowIdx]||[];
+  var monthRow=rows[monthRowIdx]||[];
+  var colPairs=[[1,2],[3,4],[5,6],[7,8],[9,10],[11,12]];
+  var dates=[];
+
+  colPairs.forEach(function(pair){
+    var dc=dateRow[pair[0]]||dateRow[pair[0]-1]||'';
+    var mc=monthRow[pair[0]]||monthRow[pair[0]-1]||dc;
+    var mMatch=mc.match(/(\d+)月/)||dc.match(/(\d+)月/);
+    var dMatch=dc.match(/(\d+)日/);
+    if(dMatch){
+      var mo=mMatch?parseInt(mMatch[1]):new Date().getMonth()+1;
+      var dy=parseInt(dMatch[1]);
+      var yr=currentYear;
+      if(mo<new Date().getMonth()-2)yr=currentYear+1;
+      dates.push(yr+'-'+String(mo).padStart(2,'0')+'-'+String(dy).padStart(2,'0'));
+    }else{dates.push(null);}
+  });
+
+  for(var ri=0;ri<rows.length;ri++){
+    var row=rows[ri]||[];
+    var timeRaw=(row[0]||'').trim().replace(/[：:]/g,':').replace(/\s/g,'');
+    var timeStr=TIME_MAP[timeRaw];
+    if(!timeStr)continue;
+    colPairs.forEach(function(pair,ci){
+      var ds=dates[ci];if(!ds)return;
+      var co=(row[pair[0]]||'').trim();
+      if(!co)return;
+      var skip=false;
+      SKIP_WORDS.forEach(function(w){if(co.includes(w))skip=true;});
+      if(skip)return;
+      var dur=SLOTS_15.includes(timeStr)?'15':'30';
+      results.push({date:ds,time_slot:timeStr,company:co,duration:dur});
+    });
+  }
+  var seen={};
+  return results.filter(function(item){var k=item.date+'_'+item.time_slot;if(seen[k])return false;seen[k]=true;return true;});
+}
+
+async function doImport(){
+  var newItems=importPreview.filter(function(i){return !R[i.date+'_'+i.time_slot];});
+  if(!newItems.length)return;
+  var btn=document.getElementById('import-btn');if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 登録中...';}
+  var success=0,fail=0;
+  for(var i=0;i<newItems.length;i++){
+    var item=newItems[i];
+    try{
+      var{data,error}=await db.from('reservations').insert([{date:item.date,time_slot:item.time_slot,company:item.company,duration:item.duration}]).select();
+      if(error){fail++;continue;}
+      R[item.date+'_'+item.time_slot]={co:item.company,dur:item.duration,id:data[0].id};success++;
+    }catch(e){fail++;}
+  }
+  alert('✅ 登録完了！\n成功：'+success+'件 ／ 失敗：'+fail+'件');
+  await loadAll();rImport();
+}
+
 function confirmDel(ds,t){
   var r=R[ds+'_'+t];if(!r)return;
   var p=ds.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);
-  var dayIdx=gw(wk).findIndex(function(day){return fmt(day)===ds;});
-  var dayName=dayIdx>=0?DN[dayIdx]:'';
-  document.getElementById('modal').innerHTML=
-    '<div class="mbg" onclick="clM(event)"><div class="mbox">'
-    +'<div class="mttl" style="color:#E05B5B">🗑 予約を削除しますか？</div>'
-    +'<div class="minfo">📅 '+m+'月'+d+'日（'+dayName+'）<br>🕐 '+t+'〜<br>🏢 '+esc(r.co)+'</div>'
-    +'<div class="mbtns">'
-    +'<button class="mng" onclick="clM()">キャンセル</button>'
-    +'<button class="mok-del" id="del-btn" onclick="doDel(\''+ds+'\',\''+t+'\')">削除する</button>'
-    +'</div></div></div>';
+  var di=gw(wk).findIndex(function(day){return fmt(day)===ds;});
+  document.getElementById('modal').innerHTML='<div class="mbg" onclick="clM(event)"><div class="mbox"><div class="mttl" style="color:#E05B5B">🗑 予約を削除しますか？</div><div class="minfo">📅 '+m+'月'+d+'日（'+(di>=0?DN[di]:'')+'）<br>🕐 '+t+'〜<br>🏢 '+esc(r.co)+'</div><div class="mbtns"><button class="mng" onclick="clM()">キャンセル</button><button class="mok-del" id="del-btn" onclick="doDel(\''+ds+'\',\''+t+'\')">削除する</button></div></div></div>';
 }
 async function doDel(ds,t){
   var r=R[ds+'_'+t];if(!r)return;
   var btn=document.getElementById('del-btn');if(btn){btn.disabled=true;btn.textContent='削除中...';}
-  try{
-    var{error}=await db.from('reservations').delete().eq('id',r.id);
-    if(error)throw error;
-    delete R[ds+'_'+t];clM();render();
-  }catch(e){alert('削除エラー: '+e.message);if(btn){btn.disabled=false;btn.textContent='削除する';}}
+  try{var{error}=await db.from('reservations').delete().eq('id',r.id);if(error)throw error;delete R[ds+'_'+t];clM();render();}
+  catch(e){alert('削除エラー: '+e.message);if(btn){btn.disabled=false;btn.textContent='削除する';}}
 }
 function clM(e){if(!e||e.target.className==='mbg')document.getElementById('modal').innerHTML='';}
 loadAll();
