@@ -108,7 +108,13 @@ function getNextWeekDays(){
   nm.setDate(t.getDate()+dn);
   return Array.from({length:6},function(_,i){var d=new Date(nm);d.setDate(nm.getDate()+i);return d;});
 }
-function fmt(d){return d.toISOString().split('T')[0];}
+// タイムゾーンずれ防止：ローカル日付を使う
+function fmt(d){
+  var y=d.getFullYear();
+  var m=String(d.getMonth()+1).padStart(2,'0');
+  var dy=String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+dy;
+}
 function fj(d){return(d.getMonth()+1)+'月'+d.getDate()+'日';}
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function ca(ds){return SLOTS.filter(function(s){return!R[ds+'_'+s.t];}).length;}
@@ -120,10 +126,11 @@ async function loadAll(){
     document.getElementById('week-banner').textContent='📅 予約受付期間：'+fj(days[0])+'（月）〜 '+fj(days[5])+'（土）';
     var{data,error}=await db.from('reservations').select('*').gte('date',from).lte('date',to);
     if(error)throw error;
-    R={};(data||[]).forEach(function(r){
-  var dateKey=String(r.date).split('T')[0];
-  R[dateKey+'_'+r.time_slot]={co:r.company,dur:r.duration,id:r.id};
-});
+    R={};
+    (data||[]).forEach(function(r){
+      var dateKey=String(r.date).split('T')[0];
+      R[dateKey+'_'+r.time_slot]={co:r.company,dur:r.duration,id:r.id};
+    });
     setBadge('ok');
   }catch(e){console.error(e);setBadge('err');}
   rTabs();rSlots();
