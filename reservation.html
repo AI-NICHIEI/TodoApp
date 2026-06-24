@@ -92,6 +92,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 const SUPABASE_URL="https://uzjftccxoipspazrtuvl.supabase.co";
 const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4NjQ1NTYsImV4cCI6MjA5NTQ0MDU1Nn0.qsXWRTk2hwK4JtIBoNuq-8OXPJYb3-Q4BPugBg2tzd8";
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false}});
+const CHAT_WEBHOOK='https://chat.googleapis.com/v1/spaces/AAQAmBmeiUo/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=VXrRm3SPFEyrdTCtun7IjuiymUxtWRr0FcFY9MEBl_k';
+
 var R={},sd=0;
 var DN=['月','火','水','木','金','土'];
 var SLOTS=[
@@ -102,13 +104,13 @@ var SLOTS=[
   {t:'14:00',dur:'30'},{t:'14:30',dur:'30'},{t:'14:45',dur:'15'},
   {t:'15:00',dur:'30'},{t:'15:30',dur:'30'},{t:'16:00',dur:'30'}
 ];
+
 function getNextWeekDays(){
   var t=new Date();t.setHours(0,0,0,0);
   var dw=t.getDay(),dn=dw===0?1:8-dw,nm=new Date(t);
   nm.setDate(t.getDate()+dn);
   return Array.from({length:6},function(_,i){var d=new Date(nm);d.setDate(nm.getDate()+i);return d;});
 }
-// タイムゾーンずれ防止：ローカル日付を使う
 function fmt(d){
   var y=d.getFullYear();
   var m=String(d.getMonth()+1).padStart(2,'0');
@@ -118,7 +120,13 @@ function fmt(d){
 function fj(d){return(d.getMonth()+1)+'月'+d.getDate()+'日';}
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function ca(ds){return SLOTS.filter(function(s){return!R[ds+'_'+s.t];}).length;}
-function setBadge(s){var b=document.getElementById('sync-badge');if(!b)return;if(s==='ok'){b.className='sync ok';b.innerHTML='☁️ 同期済み';}else if(s==='err'){b.className='sync err';b.innerHTML='⚠️ エラー';}else{b.className='sync loading';b.innerHTML='<span class="spinner"></span> 接続中';}}
+function setBadge(s){
+  var b=document.getElementById('sync-badge');if(!b)return;
+  if(s==='ok'){b.className='sync ok';b.innerHTML='☁️ 同期済み';}
+  else if(s==='err'){b.className='sync err';b.innerHTML='⚠️ エラー';}
+  else{b.className='sync loading';b.innerHTML='<span class="spinner"></span> 接続中';}
+}
+
 async function loadAll(){
   setBadge('loading');
   try{
@@ -135,6 +143,7 @@ async function loadAll(){
   }catch(e){console.error(e);setBadge('err');}
   rTabs();rSlots();
 }
+
 function rTabs(){
   var days=getNextWeekDays(),h='';
   days.forEach(function(d,i){
@@ -147,10 +156,14 @@ function rTabs(){
   document.getElementById('dtabs').innerHTML=h;
 }
 function selD(i){sd=i;rTabs();rSlots();}
+
 function rSlots(){
   var days=getNextWeekDays(),day=days[sd],ds=fmt(day);
   var avail=SLOTS.filter(function(s){return!R[ds+'_'+s.t];});
-  if(!avail.length){document.getElementById('swrap').innerHTML='<div class="empty"><div>📅</div><p>この日は満枠です</p></div>';return;}
+  if(!avail.length){
+    document.getElementById('swrap').innerHTML='<div class="empty"><div>📅</div><p>この日は満枠です</p></div>';
+    return;
+  }
   var h='<div class="day-title">📅 '+fj(day)+'（'+DN[sd]+'）の空き枠</div><div class="sgrid">';
   avail.forEach(function(s){
     var is15=s.dur==='15';
@@ -161,6 +174,7 @@ function rSlots(){
   h+='</div>';
   document.getElementById('swrap').innerHTML=h;
 }
+
 function opB(ds,t,dur){
   if(R[ds+'_'+t])return;
   var p=ds.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);
@@ -178,6 +192,7 @@ function opB(ds,t,dur){
     +'</div></div></div>';
   setTimeout(function(){var e=document.getElementById('ci');if(e)e.focus();},60);
 }
+
 async function dB(ds,t,dur){
   var co=(document.getElementById('ci').value||'').trim();
   var ph=(document.getElementById('ph').value||'').trim();
@@ -188,18 +203,18 @@ async function dB(ds,t,dur){
     var{data,error}=await db.from('reservations').insert([{date:ds,time_slot:t,company:co,phone:ph||null,duration:dur}]).select();
     if(error)throw error;
     R[ds+'_'+t]={co:co,dur:dur,id:data[0].id};
-    // Google Chat通知
+    // Google Chat通知（失敗しても予約は完了）
     var p=ds.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);
     var msg='🚛 *搬入予約が入りました*\n'
       +'📅 '+m+'月'+d+'日（'+DN[sd]+'）\n'
       +'🕐 '+t+'〜（'+dur+'分枠）\n'
       +'🏢 '+co
       +(ph?'\n📞 '+ph:'');
-    fetch('https://chat.googleapis.com/v1/spaces/AAQAmBmeiUo/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=VXrRm3SPFEyrdTCtun7IjuiymUxtWRr0FcFY9MEBl_k',{
+    fetch(CHAT_WEBHOOK,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({text:msg})
-    }).catch(function(e){console.warn('Chat通知失敗:',e);});
+    }).catch(function(){});
     document.getElementById('modal').innerHTML=
       '<div class="mbg"><div class="mbox"><div class="complete-box">'
       +'<span class="icon">✅</span>'
@@ -213,8 +228,7 @@ async function dB(ds,t,dur){
     if(btn){btn.disabled=false;btn.innerHTML='✅ 予約する';}
   }
 }
-  }
-}
+
 function clM(e){if(!e||e.target.className==='mbg')document.getElementById('modal').innerHTML='';}
 loadAll();
 </script>
