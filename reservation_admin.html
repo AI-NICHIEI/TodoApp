@@ -172,7 +172,12 @@ var SLOTS_15=['10:15','11:15','13:45','14:45'];
 var SKIP_WORDS=['業 者 名','業者名','午前','午後','合計','持込','曜日','時間','コンテナ','新規'];
 
 function gw(o){var t=new Date();t.setHours(0,0,0,0);var dw=t.getDay(),df=dw===0?-6:1-dw,mn=new Date(t);mn.setDate(t.getDate()+df+o*7);return Array.from({length:6},function(_,i){var d=new Date(mn);d.setDate(mn.getDate()+i);return d;});}
-function fmt(d){return d.toISOString().split('T')[0];}
+function fmt(d){
+  var y=d.getFullYear();
+  var m=String(d.getMonth()+1).padStart(2,'0');
+  var day=String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
 function fj(d){return(d.getMonth()+1)+'月'+d.getDate()+'日';}
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function cntBooked(ds){return SLOTS.filter(function(s){return!!R[ds+'_'+s.t];}).length;}
@@ -476,18 +481,19 @@ async function doImport(){
   for(var i=0;i<newItems.length;i++){
     var item=newItems[i];
     try{
-      // タイムゾーンずれ防止：date型として文字列をそのまま渡す
-      var p=item.date.split('-');
-      var safeDate=parseInt(p[0])+'-'+p[1]+'-'+p[2];
-      var{data,error}=await db.from('reservations').insert([{date:safeDate,time_slot:item.time_slot,company:item.company,duration:item.duration}]).select();
-      if(error){fail++;continue;}
+      var{data,error}=await db.from('reservations').insert([{
+        date:item.date,
+        time_slot:item.time_slot,
+        company:item.company,
+        duration:item.duration
+      }]).select();
+      if(error){console.error('fail:',item.date,error.message);fail++;continue;}
       R[item.date+'_'+item.time_slot]={co:item.company,dur:item.duration,id:data[0].id};success++;
-    }catch(e){fail++;}
+    }catch(e){console.error('ex:',e);fail++;}
   }
   alert('✅ 登録完了！\n成功：'+success+'件 ／ 失敗：'+fail+'件');
   await loadAll();rImport();
 }
-
 function confirmDel(ds,t){
   var r=R[ds+'_'+t];if(!r)return;
   var p=ds.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);

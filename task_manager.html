@@ -138,6 +138,10 @@ textarea:focus{outline:none;border-color:var(--main)}
 .db-banner{border-radius:12px;padding:12px 16px;margin-bottom:12px;font-size:13px;display:flex;align-items:center;gap:8px}
 .db-banner.err{background:#FFE8E8;border:2px solid #FFBBBB;color:#C02020}
 .db-banner.warn{background:var(--amber-light);border:2px solid #FFD98A;color:#8B5500}
+.person-cb-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.person-cb-item{display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:20px;border:2px solid var(--border);background:#fff;cursor:pointer;font-size:13px;font-weight:600;color:#666;transition:all .15s;user-select:none}
+.person-cb-item.checked{background:var(--main-light);border-color:var(--main-mid);color:var(--main-dark)}
+.person-cb-item input{display:none}
 @media(min-width:768px){
   #app{max-width:920px;margin:0 auto;box-shadow:0 0 50px rgba(125,191,58,.15)}
   .header{padding:22px 32px 18px}
@@ -291,7 +295,7 @@ textarea:focus{outline:none;border-color:var(--main)}
       <div class="card-box">
         <h3><i class="ti ti-plus"></i> タスクを手動追加</h3>
         <div class="form-row"><label>タスク内容</label><input id="f-title" type="text" placeholder="例：産廃搬出計画書の作成"></div>
-        <div class="form-row"><label>担当者</label><select id="f-person"></select></div>
+        <div class="form-row"><label>担当者</label><div class="person-cb-grid" id="f-person-grid"></div></div>
         <div class="form-row"><label>期限</label><input id="f-due" type="date"></div>
         <div class="form-row"><label>ステータス</label>
           <select id="f-status">
@@ -391,11 +395,28 @@ function initials(n){return(n||'？').slice(0,2);}
 function fmtDate(d){if(!d)return '';const[y,m,dd]=d.split('-');return y+'年'+parseInt(m)+'月'+parseInt(dd)+'日';}
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function isWide(){return window.innerWidth>=768;}
+function parsePersons(val){
+  if(!val)return['その他'];
+  if(Array.isArray(val))return val;
+  if(typeof val==='string'&&val.startsWith('[')){try{return JSON.parse(val);}catch(e){}}
+  return[val];
+}
+function buildPersonCheckboxes(containerId,prefix,currentPersons){
+  const el=document.getElementById(containerId);if(!el)return;
+  el.innerHTML=members.map((m,i)=>{
+    const ch=(currentPersons||[]).includes(m);
+    return '<label class="person-cb-item'+(ch?' checked':'')+'">'+'<input type="checkbox" id="'+prefix+i+'"'+(ch?' checked':'')+' onchange="this.parentElement.classList.toggle(\'checked\',this.checked)">'+escHtml(m)+'</label>';
+  }).join('');
+}
+function collectPersons(prefix){
+  const res=members.filter((_,i)=>{const cb=document.getElementById(prefix+i);return cb&&cb.checked;});
+  return res.length?res:['その他'];
+}
 function buildPersonSelect(selId,cur){
   const sel=document.getElementById(selId);if(!sel)return;
   sel.innerHTML=members.map(m=>'<option value="'+m+'"'+(m===cur?' selected':'')+'>'+m+'</option>').join('')+'<option value="その他"'+(cur==='その他'?' selected':'')+'>その他</option>';
 }
-function renderAll(){renderSummary();renderFilters();renderTasks();renderMinutes();renderMembers();buildPersonSelect('f-person','');updatePromptText();}
+function renderAll(){renderSummary();renderFilters();renderTasks();renderMinutes();renderMembers();buildPersonCheckboxes('f-person-grid','fpcb-',[]);updatePromptText();}
 
 // ---- タスク一覧 ----
 function renderSummary(){
@@ -419,11 +440,13 @@ function taskCardHtml(t){
   const dl=daysLabel(t.due,t.status);
   const mtg=t.minutes_id?minutesList.find(m=>String(m.id)===String(t.minutes_id)):null;
   const pc=(t.status==='progress'&&!uc)?'in-progress-card':'';
+  const persons=parsePersons(t.person);
+  const avatarHtml=persons.slice(0,3).map(p=>'<div class="avatar" title="'+escHtml(p)+'">'+initials(p)+'</div>').join('');
   return '<div class="task-card '+uc+' '+pc+'" onclick="openTask('+t.id+')">'+
     '<div class="task-top"><div class="task-title">'+escHtml(t.title)+'</div>'+
     '<span class="days-badge '+dl.cls+'">'+dl.txt+'</span></div>'+
     '<div class="task-meta">'+
-    '<span class="meta-chip"><div class="avatar">'+initials(t.person)+'</div>'+escHtml(t.person)+'</span>'+
+    '<span class="meta-chip">'+avatarHtml+escHtml(persons.join('・'))+'</span>'+
     '<span class="meta-chip"><i class="ti ti-calendar"></i>'+(t.due||'未設定')+'</span>'+
     (mtg?'<span class="meeting-badge" onclick="event.stopPropagation();openMinutesDetail('+mtg.id+')"><i class="ti ti-notebook"></i>'+escHtml(mtg.title)+'</span>':'')+
     (t.from_meeting&&!t.minutes_id?'<span class="meeting-badge"><i class="ti ti-sparkles"></i>AI抽出</span>':'')+
@@ -434,7 +457,7 @@ function taskCardHtml(t){
 }
 
 function renderTasks(){
-  const visible=filterPerson==='全員'?tasks:tasks.filter(t=>t.person===filterPerson);
+  const visible=filterPerson==='全員'?tasks:tasks.filter(t=>parsePersons(t.person).includes(filterPerson));
   const sS=document.getElementById('task-list-single');
   const sL=document.getElementById('task-list-left');
   const sR=document.getElementById('task-list-right');
@@ -471,7 +494,7 @@ function openTask(id){
   const nl=ns==='progress'?'進行中にする':ns==='done'?'完了にする':'未着手に戻す';
   const ni=ns==='progress'?'ti-player-play':ns==='done'?'ti-check':'ti-rotate-clockwise';
   const mtg=t.minutes_id?minutesList.find(m=>String(m.id)===String(t.minutes_id)):null;
-  const po=members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('')+'<option value="その他"'+(t.person==='その他'?' selected':'')+'>その他</option>';
+  const currentPersons=parsePersons(t.person);
   document.getElementById('modal-area').innerHTML=
     '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:8px">'+
@@ -483,7 +506,7 @@ function openTask(id){
     '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">'+
     // 担当者
     '<div class="info-card"><div class="info-label">担当者</div>'+
-    '<select id="task-edit-person" style="width:100%;padding:9px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit;margin-top:4px">'+po+'</select></div>'+
+    '<div class="person-cb-grid" id="task-person-grid"></div></div>'+
     // 期限
     '<div class="info-card"><div class="info-label">期限</div>'+
     '<input type="date" id="task-edit-due" value="'+(t.due||'')+'" style="width:100%;padding:9px;border-radius:9px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit;margin-top:4px"></div>'+
@@ -506,11 +529,13 @@ function openTask(id){
     '<button class="big-btn btn-danger" onclick="deleteTask('+id+')"><i class="ti ti-trash"></i>このタスクを削除</button>'+
     '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i>閉じる</button>'+
     '</div></div>';
+  buildPersonCheckboxes('task-person-grid','tpcb-',currentPersons);
 }
 
 async function saveTaskEdit(id){
   const title   =document.getElementById('task-edit-title').value.trim();
-  const person  =document.getElementById('task-edit-person').value;
+  const persons =collectPersons('tpcb-');
+  const person  =JSON.stringify(persons);
   const due     =document.getElementById('task-edit-due').value;
   const progress=document.getElementById('task-edit-progress').value.trim();
   if(!title){alert('タスク内容を入力してください');return;}
@@ -565,7 +590,7 @@ function openMinutesDetail(id){
     linked.forEach(t=>{
       const dl=daysLabel(t.due,t.status);
       th+='<div class="task-chip"><span class="status-dot '+statusDot(t.status)+'" style="width:7px;height:7px"></span>'+
-        escHtml(t.person)+'：'+escHtml(t.title)+
+        escHtml(parsePersons(t.person).join('・'))+'：'+escHtml(t.title)+
         '<span class="days-badge '+dl.cls+'" style="font-size:10px;padding:2px 7px">'+dl.txt+'</span></div>';
     });
     th+='</div>';
@@ -629,7 +654,7 @@ function renderMembers(){
   const el=document.getElementById('member-list');if(!el)return;
   if(!members.length){el.innerHTML='<div class="empty">担当者がいません</div>';return;}
   el.innerHTML=members.map((m,i)=>{
-    const cnt=tasks.filter(t=>t.person===m).length;
+    const cnt=tasks.filter(t=>parsePersons(t.person).includes(m)).length;
     return '<div class="member-row">'+
       '<div class="member-avatar-lg">'+initials(m)+'</div>'+
       '<div class="member-name">'+escHtml(m)+'</div>'+
@@ -667,14 +692,24 @@ function confirmEditMember(i){
   if(!n){alert('名前を入力してください');return;}
   if(members.includes(n)&&members[i]!==n){alert('同じ名前が既に存在します');return;}
   const old=members[i];members[i]=n;
-  tasks=tasks.map(t=>t.person===old?{...t,person:n}:t);
+  tasks=tasks.map(t=>{
+    const ps=parsePersons(t.person);
+    if(!ps.includes(old))return t;
+    const np=ps.map(p=>p===old?n:p);
+    return{...t,person:JSON.stringify(np)};
+  });
   closeModal();renderAll();
 }
 function deleteMember(i){
-  const name=members[i];const cnt=tasks.filter(t=>t.person===name).length;
-  if(!confirm('「'+name+'」を削除しますか？'+(cnt?'\nタスク'+cnt+'件が「その他」になります':'')))return;
+  const name=members[i];const cnt=tasks.filter(t=>parsePersons(t.person).includes(name)).length;
+  if(!confirm('「'+name+'」を削除しますか？'+(cnt?'\nタスク'+cnt+'件の担当から外れます':'')))return;
   members.splice(i,1);
-  if(cnt)tasks=tasks.map(t=>t.person===name?{...t,person:'その他'}:t);
+  if(cnt)tasks=tasks.map(t=>{
+    const ps=parsePersons(t.person);
+    if(!ps.includes(name))return t;
+    const np=ps.filter(p=>p!==name);
+    return{...t,person:JSON.stringify(np.length?np:['その他'])};
+  });
   if(filterPerson===name)filterPerson='全員';
   renderAll();
 }
@@ -920,7 +955,8 @@ function clearAIForm(){
 }
 async function addManualTask(){
   const title=document.getElementById('f-title').value.trim();
-  const person=document.getElementById('f-person').value;
+  const persons=collectPersons('fpcb-');
+  const person=JSON.stringify(persons);
   const due=document.getElementById('f-due').value;
   const status=document.getElementById('f-status').value;
   if(!title||!due){alert('タスク内容と期限を入力してください');return;}
