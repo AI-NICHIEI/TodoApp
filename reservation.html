@@ -108,13 +108,16 @@ var SLOTS=[
 function getNextWeekDays(){
   var t=new Date();t.setHours(0,0,0,0);
   var dw=t.getDay();
-  // 日曜(0)→翌日月曜から、月〜土(1-6)→来週月曜から
-  var dn=dw===0?1:8-dw;
-  var nm=new Date(t);
-  nm.setDate(t.getDate()+dn);
-  return Array.from({length:6},function(_,i){var d=new Date(nm);d.setDate(nm.getDate()+i);return d;});
-}
-function fmt(d){
+  // 今週の月曜を計算
+  var df=dw===0?-6:1-dw;
+  var mon=new Date(t);
+  mon.setDate(t.getDate()+df);
+  // 日曜(0)だけ翌週に切り替える
+  if(dw===0)mon.setDate(mon.getDate()+7);
+  return Array.from({length:6},function(_,i){
+    var d=new Date(mon);d.setDate(mon.getDate()+i);return d;
+  });
+}function fmt(d){
   var y=d.getFullYear();
   var m=String(d.getMonth()+1).padStart(2,'0');
   var dy=String(d.getDate()).padStart(2,'0');
