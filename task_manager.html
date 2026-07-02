@@ -316,7 +316,7 @@ const SUPABASE_URL = "https://uzjftccxoipspazrtuvl.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4NjQ1NTYsImV4cCI6MjA5NTQ0MDU1Nn0.qsXWRTk2hwK4JtIBoNuq-8OXPJYb3-Q4BPugBg2tzd8";
 const db = (window.supabase||window.Supabase||supabase).createClient(SUPABASE_URL, SUPABASE_KEY, {auth:{persistSession:false}});
 
-let members      = ['園美','奈美','真美','恵一','美佳','矢板','月井','北浦','美咲','明日香','関根','吉岡'];
+let members      = ['園美','奈美','真美','恵一','美佳','矢板','月井'];
 let filterPerson = '全員';
 let currentMode  = 'brief';
 let currentStep  = 1;
@@ -786,16 +786,49 @@ function formatMinutes(text,title,mode){
 }
 async function goStep3(){
   const body=document.getElementById('minutes-result').value.trim();
+  if(!body){alert('議事録が空です');return;}
+  // 議事録はまだ保存しない！抽出だけ行う
+  pendingTasks=extractTasksFromText(body);
+  pendingMid=null;
+  showStep(3);
+  renderTaskExtract(pendingTasks,null);
+}
+
+async function confirmAndRegister(mid){
+  const btn=document.querySelector('#task-extract-area .btn-primary');
+  if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner-dark"></span> 登録中...';}
+  const body=document.getElementById('minutes-result').value.trim();
   const title=document.getElementById('meeting-title').value.trim();
   const date=document.getElementById('meeting-date').value;
   const mems=document.getElementById('meeting-members').value.trim();
-  if(!body){alert('議事録が空です');return;}
+  const createdIds=[];
   try{
-    const saved=await dbInsertMinutes({title,date:date||today(),members:mems,body,task_ids:[]});
-    pendingMid=saved.id;minutesList.push({...saved,task_ids:[]});
-  }catch(e){alert('議事録の保存に失敗しました: '+e.message);return;}
-  pendingTasks=extractTasksFromText(body);
-  showStep(3);renderTaskExtract(pendingTasks,pendingMid);
+    // ここで初めて議事録を保存
+    const savedMin=await dbInsertMinutes({title,date:date||today(),members:mems,body,task_ids:[]});
+    minutesList.push({...savedMin,task_ids:[]});
+    const registeredMid=savedMin.id;
+
+    for(let i=0;i<pendingTasks.length;i++){
+      const t=pendingTasks[i];
+      const row=document.getElementById('erow-'+i);
+      if(row&&row.style.pointerEvents==='none')continue;
+      const person=document.getElementById('ep-'+i)?.value||t.person;
+      const due=document.getElementById('ed-'+i)?.value||t.due;
+      const saved=await dbInsertTask({title:t.title,person,due,status:'todo',from_meeting:true,minutes_id:registeredMid});
+      tasks.push(saved);createdIds.push(saved.id);
+    }
+    if(createdIds.length>0){
+      await dbUpdateMinutesTaskIds(registeredMid,createdIds);
+      const mi=minutesList.findIndex(m=>m.id===registeredMid);
+      if(mi>-1)minutesList[mi].task_ids=createdIds;
+    }
+    pendingTasks=[];pendingMid=null;
+    clearAIForm();renderAll();switchTab('tasks');
+    alert('✅ 議事録と'+createdIds.length+'件のタスクを保存しました！');
+  }catch(e){
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-check"></i> タスクを登録してダッシュボードに反映';}
+    alert('登録エラー: '+e.message);
+  }
 }
 
 function extractTasksFromText(text){
