@@ -960,19 +960,26 @@ function renderTaskExtract(extracted,mid){
       '<button class="big-btn btn-primary" onclick="switchTab(\'add\')"><i class="ti ti-plus"></i> 手動でタスクを追加</button>';
     return;
   }
-  let html='<div style="font-size:13px;color:#888;margin-bottom:10px"><i class="ti ti-sparkles"></i> '+extracted.length+'件のタスクを検出。不要な行は ✕ で除外できます。</div>';
+  let html='<div style="font-size:13px;color:#888;margin-bottom:10px"><i class="ti ti-sparkles"></i> '+extracted.length+'件のタスクを検出。内容・担当者・期限を編集できます。不要な行は ✕ で除外。</div>';
   extracted.forEach((t,i)=>{
     const opts=members.map(m=>'<option value="'+m+'"'+(m===t.person?' selected':'')+'>'+m+'</option>').join('')+'<option value="その他"'+(t.person==='その他'?' selected':'')+'>その他</option>';
-    html+='<div class="extracted-task-row" id="erow-'+i+'">'+
-      '<div class="task-text">'+escHtml(t.title)+'</div>'+
-      '<select id="ep-'+i+'">'+opts+'</select>'+
-      '<input type="date" id="ed-'+i+'" value="'+t.due+'">'+
-      '<button onclick="removeExtractedRow('+i+')" style="background:var(--red-light);border:1.5px solid #FFBBBB;color:#C02020;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px;flex-shrink:0;font-weight:700" title="除外">✕</button>'+
-      '</div>';
+    html+='<div class="extracted-task-row" id="erow-'+i+'" style="flex-direction:column;align-items:stretch;gap:8px;padding:12px">'
+      // タスク内容（編集可能テキスト）
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<input type="text" id="et-'+i+'" value="'+escHtml(t.title)+'" style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid var(--sky-mid);font-size:14px;font-family:inherit;background:#FAFEF4;color:#333">'
+      +'<button onclick="removeExtractedRow('+i+')" style="background:var(--red-light);border:1.5px solid #FFBBBB;color:#C02020;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px;font-weight:700;flex-shrink:0" title="除外">✕</button>'
+      +'</div>'
+      // 担当者・期限
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<select id="ep-'+i+'" style="flex:1;min-width:100px;padding:7px 8px;border-radius:8px;border:1.5px solid var(--border);font-size:13px;background:#FAFEF4;color:#333;font-family:inherit">'+opts+'</select>'
+      +'<input type="date" id="ed-'+i+'" value="'+t.due+'" style="flex:1;min-width:130px;padding:7px 8px;border-radius:8px;border:1.5px solid var(--border);font-size:13px;background:#FAFEF4;color:#333;font-family:inherit">'
+      +'</div>'
+      +'</div>';
   });
   html+='<button class="big-btn btn-primary" style="margin-top:8px" onclick="confirmAndRegister('+mid+')"><i class="ti ti-check"></i> タスクを登録してダッシュボードに反映</button>';
   area.innerHTML=html;
 }
+
 function removeExtractedRow(i){
   const row=document.getElementById('erow-'+i);
   if(row){row.style.opacity='0.4';row.style.pointerEvents='none';row.style.textDecoration='line-through';const btn=row.querySelector('button');if(btn)btn.innerHTML='除外済み';}
@@ -988,17 +995,37 @@ async function confirmAndRegister(mid){
       if(row&&row.style.pointerEvents==='none')continue;
       const person=document.getElementById('ep-'+i)?.value||t.person;
       const due=document.getElementById('ed-'+i)?.value||t.due;
-      const saved=await dbInsertTask({title:t.title,person,due,status:'todo',from_meeting:true,minutes_id:mid});
+      async function confirmAndRegister(mid){
+  const btn=document.querySelector('#task-extract-area .btn-primary');
+  if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner-dark"></span> 登録中...';}
+  const body=document.getElementById('minutes-result').value.trim();
+  const title=document.getElementById('meeting-title').value.trim();
+  const date=document.getElementById('meeting-date').value;
+  const mems=document.getElementById('meeting-members').value.trim();
+  const createdIds=[];
+  try{
+    const savedMin=await dbInsertMinutes({title,date:date||today(),members:mems,body,task_ids:[]});
+    minutesList.push({...savedMin,task_ids:[]});
+    const registeredMid=savedMin.id;
+    for(let i=0;i<pendingTasks.length;i++){
+      const t=pendingTasks[i];
+      const row=document.getElementById('erow-'+i);
+      if(row&&row.style.pointerEvents==='none')continue;
+      const title_edited=(document.getElementById('et-'+i)?.value||'').trim()||t.title;
+      const person=document.getElementById('ep-'+i)?.value||t.person;
+      const due=document.getElementById('ed-'+i)?.value||t.due;
+      if(!title_edited)continue;
+      const saved=await dbInsertTask({title:title_edited,person,due,status:'todo',from_meeting:true,minutes_id:registeredMid});
       tasks.push(saved);createdIds.push(saved.id);
     }
-    if(mid&&createdIds.length>0){
-      await dbUpdateMinutesTaskIds(mid,createdIds);
-      const mi=minutesList.findIndex(m=>m.id===mid);
+    if(createdIds.length>0){
+      await dbUpdateMinutesTaskIds(registeredMid,createdIds);
+      const mi=minutesList.findIndex(m=>m.id===registeredMid);
       if(mi>-1)minutesList[mi].task_ids=createdIds;
     }
     pendingTasks=[];pendingMid=null;
     clearAIForm();renderAll();switchTab('tasks');
-    alert('✅ '+createdIds.length+'件のタスクをデータベースに保存しました！');
+    alert('✅ 議事録と'+createdIds.length+'件のタスクを保存しました！');
   }catch(e){
     if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-check"></i> タスクを登録してダッシュボードに反映';}
     alert('登録エラー: '+e.message);
