@@ -834,86 +834,123 @@ async function confirmAndRegister(mid){
 function extractTasksFromText(text){
   const results=[];
   const defDue=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
-  const duePats=[
-    {r:/(\d+)月(\d+)日/,fn:function(m){var y=new Date().getFullYear();return new Date(y,parseInt(m[1])-1,parseInt(m[2])).toISOString().split('T')[0];}},
-    {r:/今月末/,fn:function(){var d=new Date();d.setMonth(d.getMonth()+1,0);return d.toISOString().split('T')[0];}},
-    {r:/来週/,fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
-    {r:/今週中|今週末/,fn:function(){return new Date(Date.now()+5*86400000).toISOString().split('T')[0];}},
-    {r:/翌日|明日/,fn:function(){return new Date(Date.now()+1*86400000).toISOString().split('T')[0];}},
-    {r:/即日|即日開始|即時|即日継続/,fn:function(){return today();}},
-    {r:/今日/,fn:function(){return today();}},
-    {r:/(\d+)日以内/,fn:function(m){return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];}},
-    {r:/次回会議/,fn:function(){return new Date(Date.now()+14*86400000).toISOString().split('T')[0];}},
-    {r:/継続/,fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
-    {r:/毎週/,fn:function(){return new Date(Date.now()+7*86400000).toISOString().split('T')[0];}},
-  ];
-  function getDue(str){for(var pi=0;pi<duePats.length;pi++){var dm=str.match(duePats[pi].r);if(dm){try{return duePats[pi].fn(dm);}catch(e){}}}return defDue;}
-  function findPersons(str){
-    var found=[];members.forEach(function(name){if(str.includes(name))found.push(name);});
-    if(!found.length){
-      if(str.includes('営業部')||str.includes('全営業'))found.push('その他');
-      if(str.includes('管理側')||str.includes('管理部'))found.push('その他');
-      if(str.includes('広報'))found.push('その他');
+  
+  function getDue(str){
+    if(!str)return defDue;
+    var m;
+    if(m=str.match(/(\d+)月(\d+)日/)){
+      var y=new Date().getFullYear();
+      return new Date(y,parseInt(m[1])-1,parseInt(m[2])).toISOString().split('T')[0];
     }
+    if(/今月末/.test(str)){var d=new Date();d.setMonth(d.getMonth()+1,0);return d.toISOString().split('T')[0];}
+    if(/来週/.test(str))return new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+    if(/今週中|今週末/.test(str))return new Date(Date.now()+5*86400000).toISOString().split('T')[0];
+    if(/明日|翌日/.test(str))return new Date(Date.now()+1*86400000).toISOString().split('T')[0];
+    if(/即日|即時/.test(str))return today();
+    if(/今日/.test(str))return today();
+    if(/早急|至急/.test(str))return new Date(Date.now()+3*86400000).toISOString().split('T')[0];
+    if(m=str.match(/(\d+)日以内/))return new Date(Date.now()+parseInt(m[1])*86400000).toISOString().split('T')[0];
+    if(/次回会議/.test(str))return new Date(Date.now()+14*86400000).toISOString().split('T')[0];
+    if(/7月中|7月末/.test(str)){var d2=new Date();d2.setMonth(6,31);return d2.toISOString().split('T')[0];}
+    if(/8月中|8月末/.test(str)){var d3=new Date();d3.setMonth(7,31);return d3.toISOString().split('T')[0];}
+    if(/実施前|実施日|説明会まで/.test(str))return new Date(Date.now()+14*86400000).toISOString().split('T')[0];
+    return defDue;
+  }
+
+  function findPersons(str){
+    var found=[];
+    // メンバー名をスペース・読点区切りで複数検索
+    members.forEach(function(name){if(str.includes(name))found.push(name);});
+    if(!found.length&&(/管理側|管理部|幹部|社長|営業部/.test(str)))found.push('その他');
     return found.length?found:null;
   }
-  var lines=text.split('\n');var inActionSection=false;
+
+  var lines=text.split('\n');
+  var inActionSection=false;
+
   lines.forEach(function(line){
-    var l=line.trim();if(!l)return;
-    if(/^4[\s\.\s]*アクション|アクションアイテム|アクションリスト/.test(l)){inActionSection=true;return;}
-    if(/^[5-9][\s\.]/.test(l)||/^次回会議|^数字確認|^管理者/.test(l)){inActionSection=false;}
-    if(/^担当[\s\t]+(タスク|内容)/.test(l))return;
-    var tabs=l.split(/\t/);
-    if(tabs.length>=2){
-      var namePart=tabs[0].trim(),taskPart=tabs[1].trim(),duePart=tabs.length>=3?tabs[2].trim():'';
-      var persons=findPersons(namePart);
-      if(persons&&taskPart.length>=4&&taskPart.length<=100){
-        var due=duePart?getDue(duePart):getDue(l);
-        taskPart=taskPart.replace(/[（(][^）)]+[）)]/g,'').trim().replace(/[。、！!？?]$/,'').trim();
-        persons.forEach(function(p){results.push({title:taskPart,person:p,due:due});});return;
-      }
+    var l=line.trim();
+    if(!l)return;
+    
+    // 見出し検出
+    if(/アクションリスト|アクションアイテム|アクション|決定事項|6\s*アクション/.test(l)){
+      inActionSection=true;return;
     }
-    if(inActionSection){
-      var firstWord=l.split(/\s/)[0];var fp=findPersons(firstWord);
-      if(fp){
-        var rest=l.replace(firstWord,'').trim();
-        var dueMatch=rest.match(/(来週|今週中|明日|翌日|即日|今月末|次回会議|継続|毎週|\d+月\d+日|\d+日以内)(.*)$/);
-        var taskStr=rest,dueStr='';
-        if(dueMatch){dueStr=dueMatch[1];taskStr=rest.replace(dueMatch[0],'').trim();}
-        if(taskStr.length>=4&&taskStr.length<=100){
-          var due=dueStr?getDue(dueStr):getDue(l);
-          fp.forEach(function(p){results.push({title:taskStr,person:p,due:due});});return;
+    if(/^#+\s*[7-9]|^##\s*[7-9]|次回会議|管理者への注意/.test(l)){
+      inActionSection=false;return;
+    }
+
+    // 箇条書きの「*」「・」「-」を除去
+    var lClean=l.replace(/^[\*\-・\s]+/,'').trim();
+    if(!lClean||lClean.length<4)return;
+
+    // ===== パターン1: 「担当者：タスク（期限）」形式 =====
+    // 例: 月井：Googleフォームを作成（7月中）
+    // 例: 園美 奈美 真美 美佳 月井：すり合わせ（7月10日または17日候補）
+    var colonMatch=lClean.match(/^(.{1,30})\s*[：:]\s*(.+)/);
+    if(colonMatch){
+      var namePart=colonMatch[1].trim();
+      var rest=colonMatch[2].trim();
+      var persons=findPersons(namePart);
+      if(persons){
+        // 期限を括弧から抽出
+        var due=defDue;
+        var bracketMatch=rest.match(/[（(]([^）)]+)[）)]/);
+        if(bracketMatch){
+          due=getDue(bracketMatch[1]);
+          rest=rest.replace(/[（(][^）)]+[）)]/g,'').trim();
+        }else{
+          due=getDue(lClean);
+        }
+        rest=rest.replace(/[。、！!？?]$/,'').trim();
+        if(rest.length>=4&&rest.length<=100){
+          persons.forEach(function(p){
+            results.push({title:rest,person:p,due:due});
+          });
+          return;
         }
       }
     }
-    var colonMatch=l.match(/^([^\s：:、]{1,12}(?:[・&][^\s：:、]{1,12})*)\s*[：:]\s*(.+)/);
-    if(colonMatch){
-      var namePart2=colonMatch[1],taskPart2=colonMatch[2].trim();
-      if(taskPart2.length<4)return;
-      var persons4=findPersons(namePart2);var due3=defDue;
-      var bm=taskPart2.match(/[（(]([^）)]+)[）)]/);
-      if(bm){due3=getDue(bm[1]);taskPart2=taskPart2.replace(/[（(][^）)]+[）)]/g,'').trim();}else{due3=getDue(l);}
-      taskPart2=taskPart2.replace(/[。、！!？?]$/,'').trim();
-      if(taskPart2.length<4||taskPart2.length>80)return;
-      if(persons4&&persons4.length>0){persons4.forEach(function(p){results.push({title:taskPart2,person:p,due:due3});});}
-      else{var tv=['作成','提出','確認','報告','連絡','対応','実施','訪問','検討','記録'];if(tv.some(function(v){return taskPart2.includes(v);})){results.push({title:taskPart2,person:'その他',due:due3});}}
-      return;
+
+    // ===== パターン2: アクションセクション内の任意の行 =====
+    if(inActionSection&&lClean.length>=4&&lClean.length<=120){
+      var persons2=findPersons(lClean);
+      if(persons2){
+        var due2=getDue(lClean);
+        var title2=lClean.replace(/[（(][^）)]+[）)]/g,'').replace(/[。、！!？?]$/,'').trim();
+        if(title2.length>=4){
+          persons2.forEach(function(p){
+            results.push({title:title2,person:p,due:due2});
+          });
+          return;
+        }
+      }
     }
-    var taskVerbs=['作成','提出','送付','発注','確認','報告','連絡','対応','手配','準備','整備','調整','実施','依頼','申請','共有','整理','強化','推進','開始','訪問','導入','検討','記録','洗い出し','告知','運用','増加','復旧'];
-    var lClean=l.replace(/^[・\-\*\s\d\.\)]+/,'').trim();
-    var hasMember=false,person='その他';
-    members.forEach(function(name){if(lClean.includes(name)&&!hasMember){person=name;hasMember=true;}});
-    var hasVerb=taskVerbs.some(function(v){return lClean.includes(v);});
-    if(!hasMember||!hasVerb)return;
-    if(/^[\d]+[\.\s]/.test(lClean))return;
-    var skipWords2=['会議概要','重要課題','決定事項','数字確認','次回会議','管理者'];
-    if(skipWords2.some(function(s){return lClean.startsWith(s);}))return;
-    var due4=getDue(lClean);var title2=lClean.replace(/[。、！!？?]$/,'').trim();
-    if(title2.length<4||title2.length>80)return;
-    results.push({title:title2,person:person,due:due4});
+
+    // ===== パターン3: 動詞キーワードを含む行（担当者あり） =====
+    if(!inActionSection){
+      var taskVerbs=['作成','提出','送付','発注','確認','報告','連絡','対応','手配','準備','整備','調整','実施','依頼','申請','共有','整理','強化','推進','開始','訪問','導入','検討','記録','洗い出し','告知','運用'];
+      var hasVerb=taskVerbs.some(function(v){return lClean.includes(v);});
+      var persons3=findPersons(lClean);
+      if(hasVerb&&persons3){
+        var due3=getDue(lClean);
+        var title3=lClean.replace(/[（(][^）)]+[）)]/g,'').replace(/[。、！!？?]$/,'').trim();
+        if(title3.length>=4&&title3.length<=100){
+          persons3.forEach(function(p){
+            results.push({title:title3,person:p,due:due3});
+          });
+        }
+      }
+    }
   });
+
+  // 重複除去
   var seen={};
-  return results.filter(function(t){var key=t.title.slice(0,25);if(seen[key])return false;seen[key]=true;return true;});
+  return results.filter(function(t){
+    var key=t.person+'_'+t.title.slice(0,30);
+    if(seen[key])return false;
+    seen[key]=true;return true;
+  });
 }
 
 function renderTaskExtract(extracted,mid){
