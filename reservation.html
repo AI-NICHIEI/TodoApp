@@ -18,6 +18,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sync.ok{background:rgba(255,255,255,.25);color:#fff}
 .sync.err{background:#FFCECE;color:#C02020}
 .sync.loading{background:rgba(255,255,255,.15);color:#fff}
+.mode-tabs{display:flex;background:#fff;border-bottom:2px solid #A8D96A;flex-shrink:0}
+.mtab{flex:1;padding:13px 6px;text-align:center;cursor:pointer;border:none;background:transparent;border-bottom:3px solid transparent;margin-bottom:-2px;font-size:13px;font-weight:700;color:#999;transition:all .15s}
+.mtab.on{border-bottom-color:#7DBF3A;color:#5A9A1F;background:#E8F7D0}
+.mtab:hover:not(.on){background:#F5FCF0}
 .week-banner{background:#E8F7D0;border-bottom:2px solid #A8D96A;padding:10px 24px;font-size:13px;font-weight:700;color:#5A9A1F;text-align:center;flex-shrink:0}
 .dtabs{display:flex;background:#fff;border-bottom:3px solid #A8D96A;flex-shrink:0}
 .dtab{flex:1;padding:12px 4px;text-align:center;cursor:pointer;border:none;background:transparent;border-bottom:4px solid transparent;margin-bottom:-3px;transition:all .15s}
@@ -44,6 +48,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .smin{font-size:10px;font-weight:700;color:#5BB8E8;display:block}
 .empty{text-align:center;padding:60px 16px;color:#aaa}
 .empty div{font-size:52px;margin-bottom:12px}
+.cwrap{flex:1;padding:20px 24px;overflow-y:auto}
+.csearch-box{background:#E8F7D0;border:2px solid #A8D96A;border-radius:12px;padding:16px;margin-bottom:20px}
+.csearch-box label{font-size:13px;font-weight:700;color:#555;display:block;margin-bottom:6px}
+.csearch-row{display:flex;gap:10px}
+.csearch-row input{flex:1;padding:13px;border-radius:10px;border:2px solid #A8D96A;font-size:15px;font-family:inherit;background:#fff;color:#333}
+.csearch-row input:focus{outline:none;border-color:#7DBF3A}
+.csearch-row button{padding:13px 20px;border-radius:10px;border:none;background:linear-gradient(120deg,#7DBF3A,#5BB8E8);color:#fff;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
+.cresult-row{background:#fff;border:2px solid #D8EDB8;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.cresult-row.s15{border-color:#89CFEE}
+.cr-info{flex:1;min-width:160px}
+.cr-date{font-size:14px;font-weight:700;color:#5A9A1F}
+.cresult-row.s15 .cr-date{color:#1A6E9A}
+.cr-co{font-size:13px;color:#666;margin-top:2px}
+.cr-cancel{background:#FFE8E8;color:#E05B5B;border:1.5px solid #FFBBBB;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.cempty{text-align:center;padding:50px 16px;color:#aaa;line-height:1.7}
 .mbg{position:fixed;inset:0;background:rgba(0,0,0,.52);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
 .mbox{background:#fff;border-radius:18px;padding:24px;width:100%;max-width:400px;box-shadow:0 16px 60px rgba(0,0,0,.25)}
 .mttl{font-size:18px;font-weight:700;color:#5A9A1F;margin-bottom:8px}
@@ -55,6 +74,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mbtns button{flex:1;padding:14px;border-radius:12px;font-size:15px;font-weight:700;border:none;cursor:pointer}
 .mok{background:linear-gradient(120deg,#7DBF3A,#5BB8E8);color:#fff}
 .mng{background:#EFEFEF;color:#666}
+.mok-del{background:#FFE8E8;color:#E05B5B;border:2px solid #FFBBBB}
 .bcls{width:100%;padding:14px;border-radius:12px;font-size:15px;font-weight:700;border:none;cursor:pointer;background:#EFEFEF;color:#666;margin-top:10px}
 .complete-box{background:linear-gradient(135deg,#E8F7D0,#D6F0FF);border:2px solid #7DBF3A;border-radius:14px;padding:24px;text-align:center;margin-bottom:16px}
 .complete-box .icon{font-size:48px;display:block;margin-bottom:12px}
@@ -63,7 +83,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(min-width:600px){
-  .hdr h1{font-size:20px}.dnum{font-size:30px}.dcnt{font-size:14px}
+  .hdr h1{font-size:20px}.dnum{font-size:30px}.dcnt{font-size:14px}.mtab{font-size:14px;padding:14px}
   .sgrid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
   .sbtn{padding:20px 10px}.stime{font-size:17px}.scirc{font-size:34px}
 }
@@ -83,9 +103,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <span class="sync loading" id="sync-badge"><span class="spinner"></span> 接続中</span>
   </div>
+  <div class="mode-tabs">
+    <button class="mtab on" id="mtab-book" onclick="switchMode('book')">📅 予約する</button>
+    <button class="mtab" id="mtab-cancel" onclick="switchMode('cancel')">🗑 予約をキャンセルする</button>
+  </div>
   <div class="week-banner" id="week-banner">読み込み中...</div>
   <div class="dtabs" id="dtabs"></div>
   <div class="swrap" id="swrap"></div>
+  <div class="cwrap" id="cwrap" style="display:none"></div>
   <div id="modal"></div>
 </div>
 <script>
@@ -94,7 +119,7 @@ const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false}});
 const CHAT_WEBHOOK='https://chat.googleapis.com/v1/spaces/AAQAmBmeiUo/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=VXrRm3SPFEyrdTCtun7IjuiymUxtWRr0FcFY9MEBl_k';
 
-var R={},sd=0;
+var R={},sd=0,mode='book';
 var DN=['月','火','水','木','金','土'];
 var SLOTS=[
   {t:'08:30',dur:'30'},{t:'09:00',dur:'30'},{t:'09:30',dur:'30'},
@@ -143,11 +168,22 @@ async function loadAll(){
     R={};
     (data||[]).forEach(function(r){
       var dateKey=String(r.date).split('T')[0];
-      R[dateKey+'_'+r.time_slot]={co:r.company,dur:r.duration,id:r.id};
+      R[dateKey+'_'+r.time_slot]={co:r.company,dur:r.duration,id:r.id,phone:r.phone||''};
     });
     setBadge('ok');
   }catch(e){console.error(e);setBadge('err');}
   rTabs();rSlots();
+}
+
+function switchMode(v){
+  mode=v;
+  document.getElementById('mtab-book').className='mtab'+(v==='book'?' on':'');
+  document.getElementById('mtab-cancel').className='mtab'+(v==='cancel'?' on':'');
+  document.getElementById('week-banner').style.display=v==='book'?'':'none';
+  document.getElementById('dtabs').style.display=v==='book'?'flex':'none';
+  document.getElementById('swrap').style.display=v==='book'?'':'none';
+  document.getElementById('cwrap').style.display=v==='cancel'?'':'none';
+  if(v==='cancel')rCancelSearch();
 }
 
 function rTabs(){
@@ -190,9 +226,9 @@ function opB(ds,t,dur){
     +'<div class="mttl">🚛 搬入予約</div>'
     +'<div class="mtb">📅 '+m+'月'+d+'日（'+DN[sd]+'）<br>🕐 <span style="color:'+col+';font-weight:700">'+t+'〜（'+dur+'分枠）</span></div>'
     +'<label>会社名 <span style="color:#E05B5B">*必須</span></label>'
-    +'<input id="ci" type="text" placeholder="例：株式会社○○建設" onkeydown="if(event.key===\'Enter\')dB(\''+ds+'\',\''+t+'\',\''+dur+'\')">'
-    +'<label>電話番号（連絡先）</label>'
-    +'<input id="ph" type="tel" placeholder="例：03-1234-5678">'
+    +'<input id="ci" type="text" placeholder="例：株式会社○○建設" onkeydown="if(event.key===\'Enter\')document.getElementById(\'ph\').focus()">'
+    +'<label>電話番号 <span style="color:#E05B5B">*必須（キャンセル時に使用します）</span></label>'
+    +'<input id="ph" type="tel" placeholder="例：03-1234-5678" onkeydown="if(event.key===\'Enter\')dB(\''+ds+'\',\''+t+'\',\''+dur+'\')">'
     +'<div class="mbtns"><button class="mng" onclick="clM()">キャンセル</button>'
     +'<button class="mok" id="book-btn" onclick="dB(\''+ds+'\',\''+t+'\',\''+dur+'\')">✅ 予約する</button>'
     +'</div></div></div>';
@@ -203,19 +239,20 @@ async function dB(ds,t,dur){
   var co=(document.getElementById('ci').value||'').trim();
   var ph=(document.getElementById('ph').value||'').trim();
   if(!co){alert('会社名を入力してください');return;}
+  if(!ph){alert('電話番号を入力してください（キャンセル時に必要です）');return;}
   var btn=document.getElementById('book-btn');
   if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 送信中...';}
   try{
-    var{data,error}=await db.from('reservations').insert([{date:ds,time_slot:t,company:co,phone:ph||null,duration:dur}]).select();
+    var{data,error}=await db.from('reservations').insert([{date:ds,time_slot:t,company:co,phone:ph,duration:dur}]).select();
     if(error)throw error;
-    R[ds+'_'+t]={co:co,dur:dur,id:data[0].id};
+    R[ds+'_'+t]={co:co,dur:dur,id:data[0].id,phone:ph};
     // Google Chat通知（失敗しても予約は完了）
     var p=ds.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);
     var msg='🚛 *搬入予約が入りました*\n'
       +'📅 '+m+'月'+d+'日（'+DN[sd]+'）\n'
       +'🕐 '+t+'〜（'+dur+'分枠）\n'
       +'🏢 '+co
-      +(ph?'\n📞 '+ph:'');
+      +'\n📞 '+ph;
     fetch(CHAT_WEBHOOK,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -225,13 +262,110 @@ async function dB(ds,t,dur){
       '<div class="mbg"><div class="mbox"><div class="complete-box">'
       +'<span class="icon">✅</span>'
       +'<div class="main">ご予約を受け付けました</div>'
-      +'<div class="sub">営業時間に担当者より<br>折り返しご連絡します</div>'
+      +'<div class="sub">営業時間に担当者より<br>折り返しご連絡します<br><br>キャンセルする場合は「予約をキャンセルする」タブから<br>ご登録の電話番号で検索してください</div>'
       +'</div><button class="bcls" onclick="clM()">閉じる</button></div></div>';
     rTabs();rSlots();
   }catch(e){
     if(e.message&&e.message.includes('unique')){alert('この時間枠はすでに予約済みです。');}
     else{alert('エラー: '+e.message);}
     if(btn){btn.disabled=false;btn.innerHTML='✅ 予約する';}
+  }
+}
+
+// ===== キャンセル機能 =====
+function rCancelSearch(keepPhone){
+  var phoneVal=keepPhone||'';
+  var h='<div class="csearch-box">'
+    +'<label>ご予約時に入力した電話番号を入力してください</label>'
+    +'<div class="csearch-row">'
+    +'<input id="cancel-phone" type="tel" placeholder="例：03-1234-5678" value="'+esc(phoneVal)+'" onkeydown="if(event.key===\'Enter\')doCancelSearch()">'
+    +'<button onclick="doCancelSearch()">🔍 検索</button>'
+    +'</div></div><div id="cancel-results"></div>';
+  document.getElementById('cwrap').innerHTML=h;
+  if(phoneVal){doCancelSearch();}
+  setTimeout(function(){var e=document.getElementById('cancel-phone');if(e&&!phoneVal)e.focus();},60);
+}
+
+function doCancelSearch(){
+  var input=document.getElementById('cancel-phone');
+  var ph=(input?input.value:'').trim();
+  if(!ph){alert('電話番号を入力してください');return;}
+  var matches=[];
+  Object.keys(R).forEach(function(key){
+    var r=R[key];
+    if(r.phone&&r.phone.trim()===ph){
+      var idx=key.lastIndexOf('_');
+      matches.push({ds:key.substring(0,idx),t:key.substring(idx+1),co:r.co,dur:r.dur});
+    }
+  });
+  matches.sort(function(a,b){return(a.ds+a.t).localeCompare(b.ds+b.t);});
+  renderCancelResults(matches);
+}
+
+function renderCancelResults(matches){
+  var area=document.getElementById('cancel-results');
+  if(!area)return;
+  if(!matches.length){
+    area.innerHTML='<div class="cempty"><div style="font-size:44px">🔍</div><p>該当する予約が見つかりませんでした<br>電話番号をご確認のうえ、再度お試しください</p></div>';
+    return;
+  }
+  var h='';
+  matches.forEach(function(m){
+    var p=m.ds.split('-'),mo=parseInt(p[1]),d=parseInt(p[2]);
+    var dow=new Date(parseInt(p[0]),mo-1,d).getDay();
+    var dayName=['日','月','火','水','木','金','土'][dow];
+    var is15=m.dur==='15';
+    h+='<div class="cresult-row'+(is15?' s15':'')+'">'
+      +'<div class="cr-info"><div class="cr-date">📅 '+mo+'月'+d+'日（'+dayName+'） '+m.t+'〜</div><div class="cr-co">🏢 '+esc(m.co)+'</div></div>'
+      +'<button class="cr-cancel" onclick="confirmCancel(\''+m.ds+'\',\''+m.t+'\')">🗑 キャンセルする</button>'
+      +'</div>';
+  });
+  area.innerHTML=h;
+}
+
+function confirmCancel(ds,t){
+  var r=R[ds+'_'+t];if(!r)return;
+  var p=ds.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);
+  var dow=new Date(parseInt(p[0]),m-1,d).getDay();
+  var dayName=['日','月','火','水','木','金','土'][dow];
+  document.getElementById('modal').innerHTML=
+    '<div class="mbg" onclick="clM(event)"><div class="mbox">'
+    +'<div class="mttl" style="color:#E05B5B">🗑 予約をキャンセルしますか？</div>'
+    +'<div class="mtb">📅 '+m+'月'+d+'日（'+dayName+'）<br>🕐 '+t+'〜<br>🏢 '+esc(r.co)+'</div>'
+    +'<div class="mbtns"><button class="mng" onclick="clM()">戻る</button>'
+    +'<button class="mok-del" id="cancel-btn" onclick="doCancel(\''+ds+'\',\''+t+'\')">キャンセルする</button>'
+    +'</div></div></div>';
+}
+
+async function doCancel(ds,t){
+  var r=R[ds+'_'+t];if(!r)return;
+  var btn=document.getElementById('cancel-btn');
+  if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 処理中...';}
+  try{
+    var{error}=await db.from('reservations').delete().eq('id',r.id);
+    if(error)throw error;
+    var co=r.co;
+    delete R[ds+'_'+t];
+    var p=ds.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);
+    var dow=new Date(parseInt(p[0]),m-1,d).getDay();
+    var dayName=['日','月','火','水','木','金','土'][dow];
+    var msg='🗑 *搬入予約がキャンセルされました*\n📅 '+m+'月'+d+'日（'+dayName+'）\n🕐 '+t+'〜\n🏢 '+co;
+    fetch(CHAT_WEBHOOK,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:msg})
+    }).catch(function(){});
+    document.getElementById('modal').innerHTML=
+      '<div class="mbg"><div class="mbox"><div class="complete-box">'
+      +'<span class="icon">✅</span>'
+      +'<div class="main">キャンセルが完了しました</div>'
+      +'<div class="sub">ご利用ありがとうございました</div>'
+      +'</div><button class="bcls" onclick="clM()">閉じる</button></div></div>';
+    rTabs();rSlots();
+    doCancelSearch();
+  }catch(e){
+    alert('エラー: '+e.message);
+    if(btn){btn.disabled=false;btn.innerHTML='キャンセルする';}
   }
 }
 
