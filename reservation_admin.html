@@ -205,7 +205,7 @@ async function loadAll(){
 }
 
 function chW(d){wk+=d;sd=0;loadAll();}
-function upd(){var days=gw(wk);document.getElementById('wlbl').textContent=fj(days[0])+'〜'+fj(days[5]);document.getElementById('pb').disabled=wk<=1;document.getElementById('nb').disabled=wk>=4;}
+function upd(){var days=gw(wk);document.getElementById('wlbl').textContent=fj(days[0])+'〜'+fj(days[5]);document.getElementById('pb').disabled=wk<=0;document.getElementById('nb').disabled=wk>=4;}
 
 function switchView(v){
   view=v;
