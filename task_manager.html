@@ -789,7 +789,13 @@ function extractTasksFromText(text){
   function findPersons(str){
     var found=[];
     members.forEach(function(name){if(str.includes(name))found.push(name);});
-    if(!found.length&&(/管理側|管理部|幹部|社長|営業部/.test(str)))found.push('その他');
+   if(!found.length){
+  if(/管理部|管理側/.test(str))found.push('その他');
+  else if(/各部門長|部門長/.test(str))found.push('その他');
+  else if(/各上司|上司/.test(str))found.push('その他');
+  else if(/全社員/.test(str))found.push('その他');
+  else if(/幹部|社長|営業部/.test(str))found.push('その他');
+}
     return found.length?found:null;
   }
   var lines=text.split('\n');
