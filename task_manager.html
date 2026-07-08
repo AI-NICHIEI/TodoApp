@@ -803,8 +803,8 @@ function extractTasksFromText(text){
   lines.forEach(function(line){
     var l=line.trim();
     if(!l)return;
-    if(/アクションリスト|アクションアイテム|アクション|決定事項|6\s*アクション/.test(l)){inActionSection=true;return;}
-    if(/^#+\s*[7-9]|^##\s*[7-9]|次回会議|管理者への注意/.test(l)){inActionSection=false;return;}
+if(/アクションリスト|アクションアイテム|アクション|決定事項|継続検討/.test(l)){inActionSection=true;return;}
+if(/^#+\s*[7-9]|^##\s*[7-9]|次回会議|管理者への注意/.test(l)){inActionSection=false;return;}
     var lClean=l.replace(/^[\*\-・\s]+/,'').trim();
     if(!lClean||lClean.length<4)return;
     // パターン1: 担当者：タスク（期限）
