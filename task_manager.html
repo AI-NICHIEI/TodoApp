@@ -310,7 +310,9 @@ const SUPABASE_URL="https://uzjftccxoipspazrtuvl.supabase.co";
 const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6amZ0Y2N4b2lwc3BhenJ0dXZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4NjQ1NTYsImV4cCI6MjA5NTQ0MDU1Nn0.qsXWRTk2hwK4JtIBoNuq-8OXPJYb3-Q4BPugBg2tzd8";
 const db=(window.supabase||supabase).createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false}});
 
-let members=['園美','奈美','真美','恵一','美佳','矢板','月井'];
+const DEFAULT_MEMBERS=['園美','奈美','真美','恵一','美佳','矢板','月井'];
+let membersData=[];
+let members=[];
 let filterPerson='全員';
 let currentMode='brief';
 let currentStep=1;
@@ -322,19 +324,35 @@ let pendingTasks=[];
 async function loadAll(){
   setSyncBadge('loading');showBanner('');
   try{
-    const[tr,mr]=await Promise.all([
+    const[tr,mr,mmr]=await Promise.all([
       db.from('task_list').select('*').order('id',{ascending:true}),
-      db.from('minutes_list').select('*').order('id',{ascending:true})
+      db.from('minutes_list').select('*').order('id',{ascending:true}),
+      db.from('members_list').select('*').order('sort_order',{ascending:true})
     ]);
     if(tr.error)throw new Error('task_list: '+tr.error.message);
     if(mr.error)throw new Error('minutes_list: '+mr.error.message);
+    if(mmr.error)throw new Error('members_list: '+mmr.error.message);
     tasks=(tr.data||[]).map(t=>({...t,due:t.due||''}));
     minutesList=(mr.data||[]).map(m=>({...m,task_ids:parseIds(m.task_ids)}));
+    if(!mmr.data||!mmr.data.length){
+      membersData=await seedDefaultMembers();
+    }else{
+      membersData=mmr.data;
+    }
+    syncMembersArray();
     setSyncBadge('ok');renderAll();
   }catch(e){
     console.error(e);setSyncBadge('err');
     showBanner('err','データベース接続エラー: '+e.message);renderAll();
   }
+}
+function syncMembersArray(){members=membersData.map(m=>m.name);}
+async function seedDefaultMembers(){
+  // members_listが空の場合のみ、初期メンバーをDBへ登録する(初回移行用)
+  const rows=DEFAULT_MEMBERS.map((name,i)=>({name,sort_order:i}));
+  const{data,error}=await db.from('members_list').insert(rows).select();
+  if(error){console.error('SEED members_list: '+error.message);return DEFAULT_MEMBERS.map((name,i)=>({id:null,name,sort_order:i}));}
+  return data;
 }
 function parseIds(val){if(!val)return[];if(Array.isArray(val))return val;try{return JSON.parse(val);}catch(e){return[];}}
 async function dbInsertTask(t){
@@ -350,6 +368,12 @@ async function dbInsertMinutes(m){
 async function dbUpdateMinutesBody(id,fields){const{error}=await db.from('minutes_list').update(fields).eq('id',id);if(error)throw new Error('UPDATE minutes: '+error.message);}
 async function dbUpdateMinutesTaskIds(id,ids){const{error}=await db.from('minutes_list').update({task_ids:JSON.stringify(ids)}).eq('id',id);if(error)throw new Error('UPDATE task_ids: '+error.message);}
 async function dbDeleteMinutes(id){const{error}=await db.from('minutes_list').delete().eq('id',id);if(error)throw new Error('DELETE minutes: '+error.message);}
+async function dbInsertMember(name,sort_order){
+  const{data,error}=await db.from('members_list').insert([{name,sort_order}]).select();
+  if(error)throw new Error('INSERT member: '+error.message);return data[0];
+}
+async function dbUpdateMember(id,name){const{error}=await db.from('members_list').update({name}).eq('id',id);if(error)throw new Error('UPDATE member: '+error.message);}
+async function dbDeleteMember(id){const{error}=await db.from('members_list').delete().eq('id',id);if(error)throw new Error('DELETE member: '+error.message);}
 
 // ---- UI ----
 function setSyncBadge(state){
@@ -641,11 +665,15 @@ function renderMembers(){
       '</div></div>';
   }).join('');
 }
-function addMember(){
+async function addMember(){
   const inp=document.getElementById('new-member-name');const name=inp.value.trim();
   if(!name){alert('名前を入力してください');return;}
   if(members.includes(name)){alert('同じ名前が既に存在します');return;}
-  members.push(name);inp.value='';renderAll();
+  const nextOrder=membersData.length?Math.max(...membersData.map(m=>m.sort_order||0))+1:0;
+  try{
+    const row=await dbInsertMember(name,nextOrder);
+    membersData.push(row);syncMembersArray();inp.value='';renderAll();
+  }catch(e){console.error(e);alert('担当者の追加に失敗しました: '+e.message);}
 }
 function editMember(i){
   const old=members[i];
@@ -663,28 +691,36 @@ function editMember(i){
     '</div></div>';
   setTimeout(()=>{const e=document.getElementById('edit-member-input');if(e){e.focus();e.select();}},80);
 }
-function confirmEditMember(i){
+async function confirmEditMember(i){
   const n=document.getElementById('edit-member-input').value.trim();
   if(!n){alert('名前を入力してください');return;}
   if(members.includes(n)&&members[i]!==n){alert('同じ名前が既に存在します');return;}
-  const old=members[i];members[i]=n;
-  tasks=tasks.map(t=>{
-    const ps=parsePersons(t.person);if(!ps.includes(old))return t;
-    const np=ps.map(p=>p===old?n:p);return{...t,person:JSON.stringify(np)};
-  });
-  closeModal();renderAll();
+  const old=members[i];const row=membersData[i];
+  try{
+    if(row&&row.id!=null)await dbUpdateMember(row.id,n);
+    if(row)row.name=n;
+    syncMembersArray();
+    tasks=tasks.map(t=>{
+      const ps=parsePersons(t.person);if(!ps.includes(old))return t;
+      const np=ps.map(p=>p===old?n:p);return{...t,person:JSON.stringify(np)};
+    });
+    closeModal();renderAll();
+  }catch(e){console.error(e);alert('担当者名の変更に失敗しました: '+e.message);}
 }
-function deleteMember(i){
-  const name=members[i];const cnt=tasks.filter(t=>parsePersons(t.person).includes(name)).length;
+async function deleteMember(i){
+  const name=members[i];const row=membersData[i];const cnt=tasks.filter(t=>parsePersons(t.person).includes(name)).length;
   if(!confirm('「'+name+'」を削除しますか？'+(cnt?'\nタスク'+cnt+'件の担当から外れます':'')))return;
-  members.splice(i,1);
-  if(cnt)tasks=tasks.map(t=>{
-    const ps=parsePersons(t.person);if(!ps.includes(name))return t;
-    const np=ps.filter(p=>p!==name);
-    return{...t,person:JSON.stringify(np.length?np:['その他'])};
-  });
-  if(filterPerson===name)filterPerson='全員';
-  renderAll();
+  try{
+    if(row&&row.id!=null)await dbDeleteMember(row.id);
+    membersData.splice(i,1);syncMembersArray();
+    if(cnt)tasks=tasks.map(t=>{
+      const ps=parsePersons(t.person);if(!ps.includes(name))return t;
+      const np=ps.filter(p=>p!==name);
+      return{...t,person:JSON.stringify(np.length?np:['その他'])};
+    });
+    if(filterPerson===name)filterPerson='全員';
+    renderAll();
+  }catch(e){console.error(e);alert('担当者の削除に失敗しました: '+e.message);}
 }
 
 // ---- AI議事録 ----
