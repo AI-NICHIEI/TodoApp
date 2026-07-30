@@ -46,7 +46,7 @@
   .prev{font-size:12px;background:#fbf6d8;border-radius:8px;padding:6px 9px;margin-bottom:9px;color:#6b6338;}
   .prev b{color:var(--blue-dark);}
   .choices{display:flex;gap:6px;}
-  .choices button{flex:1;padding:11px 2px;border-radius:10px;border:2px solid var(--line);background:#fff;font-size:14px;font-weight:700;color:#7a8493;cursor:pointer;}
+  .choices button{flex:1;padding:11px 2px;border-radius:10px;border:2px solid var(--line);background:#fff;font-size:16px;font-weight:700;color:#7a8493;cursor:pointer;}
   .choices button.s-ok{background:var(--ok);color:#fff;border-color:var(--ok);}
   .choices button.s-warn{background:var(--warn);color:#fff;border-color:var(--warn);}
   .choices button.s-ng{background:var(--ng);color:#fff;border-color:var(--ng);}
@@ -127,6 +127,7 @@
       <div class="tabs" id="tabs"></div>
       <div class="card">
         <h2 id="catTitle"></h2>
+        <p class="hint" style="margin-top:0;">判定：○=良好　△=要注意（経過観察）　×=不良（即時改善／使用停止）　該当なし</p>
         <div id="items"></div>
       </div>
 
@@ -140,9 +141,9 @@
       <div class="card">
         <h2>判定集計</h2>
         <div class="sum">
-          <div class="a"><div class="n" id="cOk">0</div>良</div>
-          <div class="b"><div class="n" id="cWarn">0</div>要注意</div>
-          <div class="c"><div class="n" id="cNg">0</div>不良</div>
+          <div class="a"><div class="n" id="cOk">0</div>○ 良</div>
+          <div class="b"><div class="n" id="cWarn">0</div>△ 要注意</div>
+          <div class="c"><div class="n" id="cNg">0</div>× 不良</div>
         </div>
       </div>
 
@@ -395,16 +396,17 @@ const SITES = [
  { key:"kanazawa2", name:"金沢工場 第二", sub:"", cats:KANAZAWA },
  { key:"toda", name:"戸田工場", sub:"", cats:TODA }
 ];
-const JUDGES = [ {v:"良",c:"s-ok"}, {v:"要注意",c:"s-warn"}, {v:"不良",c:"s-ng"}, {v:"該当なし",c:"s-na"} ];
+const JUDGES = [ {v:"良",label:"○",c:"s-ok"}, {v:"要注意",label:"△",c:"s-warn"}, {v:"不良",label:"×",c:"s-ng"}, {v:"該当なし",label:"該当なし",c:"s-na"} ];
+function sym(v){ const j=JUDGES.find(x=>x.v===v); return j?j.label:(v||""); }
 
 /* ===================== 状態 ===================== */
 let site = null, siteObj = null, current = 0, session = "", channel = null;
 let itemNodes = {};
-let state = {};        // itemKey -> {result,comment,assignee,due,by}
+let state = {};        // itemKey -> {result,note,comment,assignee,due,by}
 let findings = [];     // {id, location, result, comment, assignee, due, by}
 let members = [];      // {id,name}
 let participants = {};  // name -> true
-let prevMap = {};       // 前回結果: item text -> {result, comment}
+let prevMap = {};       // 前回結果: item text -> {result, comment, note}
 
 function itemKey(ci,ii){ return ci+"_"+ii; }
 function buildState(){
@@ -532,12 +534,12 @@ function renderItems(){
     const el=document.createElement("div"); el.className="item";
     const prev=prevMap[it.t];
     const prevExtra=[prev&&prev.comment?prev.comment:"",prev&&prev.note?prev.note:""].filter(Boolean).join("／");
-    const prevHtml=prev?('<div class="prev">前回：<b>'+esc(prev.result||"—")+'</b>'+(prevExtra?'　'+esc(prevExtra):'')+'</div>'):'';
+    const prevHtml=prev?('<div class="prev">前回：<b>'+esc(sym(prev.result)||"—")+'</b>'+(prevExtra?'　'+esc(prevExtra):'')+'</div>'):'';
     el.innerHTML=
       '<div class="q"><span class="no">'+(ii+1)+'.</span>'+esc(it.t)+'</div>'+
       (it.d?'<div class="d">'+esc(it.d)+'</div>':'')+
       prevHtml+
-      '<div class="choices">'+JUDGES.map(j=>'<button data-v="'+j.v+'">'+j.v+'</button>').join('')+'</div>'+
+      '<div class="choices">'+JUDGES.map(j=>'<button data-v="'+j.v+'">'+j.label+'</button>').join('')+'</div>'+
       '<label class="fld">特記事項（メモ）</label><input type="text" class="note-in" placeholder="確認内容・メモ（任意）">'+
       '<div class="detail">'+
         '<label class="fld">指導事項・改善コメント</label><textarea class="cmt" placeholder="指摘内容・指導事項"></textarea>'+
@@ -573,7 +575,7 @@ function renderFindings(){
     const el=document.createElement("div"); el.className="findrow";
     el.innerHTML=
       '<label class="fld">場所・内容</label><input type="text" class="floc" placeholder="例：破砕機まわり チェーンカバー無し">'+
-      '<div class="choices" style="margin-top:8px;">'+JUDGES.map(j=>'<button data-v="'+j.v+'">'+j.v+'</button>').join('')+'</div>'+
+      '<div class="choices" style="margin-top:8px;">'+JUDGES.map(j=>'<button data-v="'+j.v+'">'+j.label+'</button>').join('')+'</div>'+
       '<label class="fld">指導事項・改善コメント</label><textarea class="fcmt"></textarea>'+
       '<div class="row2"><div><label class="fld">担当者</label><select class="fasg">'+memberOptions(f.assignee)+'</select></div>'+
       '<div><label class="fld">改善期限</label><input type="date" class="fdue"></div></div>'+
@@ -618,8 +620,13 @@ async function joinSession(){
 
   if(channel){ await sb.removeChannel(channel); channel=null; }
   channel=sb.channel("si-"+session,{config:{presence:{key:myName()+"-"+Math.random().toString(36).slice(2,7)}}});
-  channel.on("postgres_changes",{event:"*",schema:"public",table:"si_live",filter:"session_id=eq."+session},(p)=>{
+  channel.on("broadcast",{event:"change"},(p)=>{
+    const r=p.payload; if(!r || r.session_id!==session) return;
+    applyRow(r,true);
+  });
+  channel.on("postgres_changes",{event:"*",schema:"public",table:"si_live"},(p)=>{
     if(p.eventType==="DELETE"){ return; }
+    if(!p.new || p.new.session_id!==session){ return; }
     applyRow(p.new,true);
   });
   channel.on("presence",{event:"sync"},()=>{ const n=Object.keys(channel.presenceState()).length; setLive(true,"同時編集中："+n+"人（"+siteObj.name+" "+date+"）"); });
@@ -628,6 +635,7 @@ async function joinSession(){
     else if(s==="CHANNEL_ERROR"||s==="TIMED_OUT"){ setLive(false,"接続エラー（Realtime未有効の可能性）"); }
   });
   showMsg(siteObj.name+" "+date+" の点検を開始しました。","info");
+  try{ localStorage.setItem("si_last",JSON.stringify({site:site,date:date,inspector:myName(),participants:Object.keys(participants).filter(n=>participants[n])})); }catch(e){}
 }
 function applyRow(r,live){
   if(!r||!r.item_key) return;
@@ -647,18 +655,25 @@ function applyRow(r,live){
     renderTabs();
   }
 }
+function broadcast(row){
+  if(channel){ try{ channel.send({type:"broadcast",event:"change",payload:row}); }catch(e){ console.error("bc",e); } }
+}
 async function push(ci,ii){
-  if(!sb||!session) return;
+  if(!session) return;
   const key=itemKey(ci,ii), st=state[key], it=siteObj.cats[ci].items[ii];
   const row={session_id:session,item_key:key,category:siteObj.cats[ci].name,item:it.t,
     result:st.result,note:st.note,comment:st.comment,assignee:st.assignee,due_date:st.due||null,updated_by:st.by};
-  const {error}=await sb.from("si_live").upsert([row],{onConflict:"session_id,item_key"});
+  broadcast(row);                          // 相手画面へ即送信（追加設定不要）
+  if(!sb) return;
+  const {error}=await sb.from("si_live").upsert([row],{onConflict:"session_id,item_key"});  // 永続化（再読込・後から参加した人用）
   if(error) console.error("push",error);
 }
 async function pushFinding(f){
-  if(!sb||!session) return;
+  if(!session) return;
   const row={session_id:session,item_key:"extra:"+f.id,category:"追加確認",item:f.location,
-    result:f.result,comment:f.comment,assignee:f.assignee,due_date:f.due||null,updated_by:f.by};
+    result:f.result,note:"",comment:f.comment,assignee:f.assignee,due_date:f.due||null,updated_by:f.by};
+  broadcast(row);
+  if(!sb) return;
   const {error}=await sb.from("si_live").upsert([row],{onConflict:"session_id,item_key"});
   if(error) console.error("pushFinding",error);
 }
@@ -694,7 +709,7 @@ async function save(){
   await sb.from("si_live").delete().eq("session_id",session);
   buildState(); findings=[]; await loadPrev(); renderTabs(); renderItems(); renderFindings();
   btn.disabled=false; btn.textContent="点検を確定して保存する";
-  showMsg("保存しました。（良"+ok+" / 要注意"+w+" / 不良"+ng+"）","ok");
+  showMsg("保存しました。（○"+ok+" / △"+w+" / ×"+ng+"）","ok");
 }
 async function clearSession(){
   if(!sb||!session){ return; }
@@ -715,11 +730,11 @@ async function loadHistory(){
   box.innerHTML="";
   data.forEach(r=>{
     const d=document.createElement("div"); d.className="hist";
-    const badges='<span class="badge ok">良 '+(r.ok_count||0)+'</span><span class="badge warn">要注意 '+(r.warn_count||0)+'</span><span class="badge ng">不良 '+(r.ng_count||0)+'</span>';
+    const badges='<span class="badge ok">○ '+(r.ok_count||0)+'</span><span class="badge warn">△ '+(r.warn_count||0)+'</span><span class="badge ng">× '+(r.ng_count||0)+'</span>';
     let det="拠点："+esc(r.site||"-")+" ／ 天候："+esc(r.weather||"-");
     if(r.participants&&r.participants.length) det+="<br>参加："+esc(r.participants.join("・"));
     const ngItems=(r.results||[]).filter(x=>x.result==="不良"||x.result==="要注意");
-    if(ngItems.length){ det+="<br>指摘："+ngItems.slice(0,6).map(x=>esc(x.item)+(x.comment?"（"+esc(x.comment)+"）":"")).join(" / "); if(ngItems.length>6) det+=" ほか"; }
+    if(ngItems.length){ det+="<br>指摘："+ngItems.slice(0,6).map(x=>sym(x.result)+esc(x.item)+(x.comment?"（"+esc(x.comment)+"）":"")).join(" / "); if(ngItems.length>6) det+=" ほか"; }
     if(r.findings&&r.findings.length){ det+="<br>追加："+r.findings.map(f=>esc(f.location)).filter(Boolean).join(" / "); }
     d.innerHTML='<div class="top"><span>'+normDate(r.inspection_date)+'</span><span>'+badges+'</span></div><div class="prev" style="margin-top:6px;">'+det+'</div>';
     box.appendChild(d);
@@ -737,10 +752,24 @@ function showView(v){
 }
 
 /* ===================== 初期化 ===================== */
-document.getElementById("date").value=todayStr();
-renderSites();
-if(sb) loadMembers();
-if(!sb){ setLive(false,"Supabase未接続（キー未設定）"); }
+(async function init(){
+  document.getElementById("date").value=todayStr();
+  renderSites();
+  if(!sb){ setLive(false,"Supabase未接続（キー未設定）"); return; }
+  await loadMembers();
+  // 直前の点検を自動で復帰（リロードで最初に戻らないように）
+  try{
+    const last=JSON.parse(localStorage.getItem("si_last")||"null");
+    if(last && last.site && SITES.some(s=>s.key===last.site)){
+      document.getElementById("inspector").value=last.inspector||"";
+      if(last.date) document.getElementById("date").value=last.date;
+      participants={}; (last.participants||[]).forEach(n=>{ participants[n]=true; });
+      selectSite(last.site);
+      renderParticipants();
+      await joinSession();
+    }
+  }catch(e){ console.error(e); }
+})();
 </script>
 </body>
 </html>
