@@ -475,9 +475,13 @@ async function loadSheetPreview(){
   document.getElementById('preview-area').innerHTML='<div style="padding:24px;color:#888;text-align:center"><span class="spinner-g"></span><div style="margin-top:8px;font-size:14px">読み込み中...</div></div>';
   try{
     var url='https://sheets.googleapis.com/v4/spreadsheets/'+SHEET_ID+'/values/'+encodeURIComponent(SHEET_NAME)+'?key='+SHEET_API_KEY;
+    console.log('URL:',url);
     var res=await fetch(url);
+    console.log('status:',res.status);
     if(!res.ok){var ej=await res.json().catch(function(){return{};});throw new Error((ej.error&&ej.error.message)||'HTTPエラー: '+res.status);}
-    var rows=(await res.json()).values||[];
+    var json=await res.json();
+    console.log('rows count:',(json.values||[]).length,'first row:',JSON.stringify((json.values||[[]])[0]));
+    var rows=json.values||[];
     importPreview=parseSheetData(rows);
     if(!importPreview.length){document.getElementById('preview-area').innerHTML='<div style="background:#FFE8E8;border:2px solid #FFBBBB;border-radius:10px;padding:16px;color:#E05B5B">データが見つかりませんでした。シートの構造を確認してください。</div>';return;}
     importPreview.forEach(function(item){
@@ -520,7 +524,9 @@ async function loadSheetPreview(){
 function parseSheetData(rows){
   var results=[],yr=new Date().getFullYear(),nowM=new Date().getMonth()+1;
   if(!rows||rows.length<3)return results;
-  var dateRow=rows[1]||[];
+  // デバッグ：最初の5行を出力
+  for(var di=0;di<Math.min(5,rows.length);di++){console.log('row['+di+']:',JSON.stringify((rows[di]||[]).slice(0,20)));}
+  var dateRow=rows[2]||[];
   var companyCols=[1,4,7,10,13,16];
   var dates=[];
   companyCols.forEach(function(col){
