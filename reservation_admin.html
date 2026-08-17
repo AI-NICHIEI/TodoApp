@@ -554,7 +554,7 @@ function parseSheetData(rows){
       var co=String(row[col]||'').trim();
       if(!co)return;
       var dur=SLOTS_15.includes(timeStr)?'15':'30';
-      if(BLOCK_CHARS.some(function(b){return co.indexOf(b)!==-1;})){
+      if(BLOCK_CHARS.some(function(b){return co.indexOf(b)!==-1;})||/[×✖✗✕☓❌Ｘ]/.test(co)||co==='×'||co==='Ｘ'){
         results.push({date:ds,time_slot:timeStr,company:BLOCK_MARKER,duration:dur,isBlock:true});
         return;
       }
