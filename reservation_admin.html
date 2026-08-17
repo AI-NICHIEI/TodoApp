@@ -179,7 +179,7 @@ var TIME_MAP={
 };
 var SLOTS_15=['10:15','11:15','13:45','14:45'];
 var SKIP_WORDS=['業 者 名','業者名','午前','午後','合計','持込','曜日','時間','コンテナ','新規'];
-var BLOCK_CHARS=['×','Ｘ','X','x','✕','☓'];
+var BLOCK_CHARS=['×','Ｘ','X','x','✕','☓','✖','✗','❌'];
 
 function gw(o){var t=new Date();t.setHours(0,0,0,0);var dw=t.getDay(),df=dw===0?-6:1-dw,mn=new Date(t);mn.setDate(t.getDate()+df+o*7);return Array.from({length:6},function(_,i){var d=new Date(mn);d.setDate(mn.getDate()+i);return d;});}
 function fmt(d){
@@ -554,7 +554,7 @@ function parseSheetData(rows){
       var co=String(row[col]||'').trim();
       if(!co)return;
       var dur=SLOTS_15.includes(timeStr)?'15':'30';
-      if(BLOCK_CHARS.indexOf(co)!==-1){
+      if(BLOCK_CHARS.some(function(b){return co.indexOf(b)!==-1;})){
         results.push({date:ds,time_slot:timeStr,company:BLOCK_MARKER,duration:dur,isBlock:true});
         return;
       }
