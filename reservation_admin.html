@@ -520,8 +520,8 @@ async function loadSheetPreview(){
 function parseSheetData(rows){
   var results=[],yr=new Date().getFullYear(),nowM=new Date().getMonth()+1;
   if(!rows||rows.length<3)return results;
-  var dateRow=rows[2]||[];
-  var companyCols=[1,3,5,7,9,11];
+  var dateRow=rows[1]||[];
+  var companyCols=[1,4,7,10,13,16];
   var dates=[];
   companyCols.forEach(function(col){
     var dc='';
@@ -543,7 +543,7 @@ function parseSheetData(rows){
     var ds=y+'-'+String(mo).padStart(2,'0')+'-'+String(dy).padStart(2,'0');
     dates.push(ds);
   });
-  for(var ri=3;ri<rows.length;ri++){
+  for(var ri=4;ri<rows.length;ri++){
     var row=rows[ri]||[];
     var timeRaw=String(row[0]||'').trim().replace(/[：:]/g,':').replace(/\s/g,'');
     var timeStr=TIME_MAP[timeRaw];
@@ -553,10 +553,12 @@ function parseSheetData(rows){
       var ds=dates[ci];if(!ds)return;
       var co=String(row[col]||'').trim();
       if(!co)return;
-      if(co.length<=3)console.log('短いセル:',JSON.stringify(co),'codes:',[...co].map(function(c){return c.charCodeAt(0).toString(16);}));
       var dur=SLOTS_15.includes(timeStr)?'15':'30';
-      if(BLOCK_CHARS.some(function(b){return co.indexOf(b)!==-1;})||/[×✖✗✕☓❌Ｘ]/.test(co)||co==='×'||co==='Ｘ'){
-        results.push({date:ds,time_slot:timeStr,company:BLOCK_MARKER,duration:dur,isBlock:true});
+      // ×系はすべて受付不可として登録（文字種を問わず×を含む1〜3文字のセル）
+      var isBlock=co.length<=3&&/[×✖✗✕☓❌ｘＸxX×]/.test(co);
+      if(!isBlock&&BLOCK_CHARS.some(function(b){return co.indexOf(b)!==-1;}))isBlock=true;
+      if(isBlock){
+        results.push({date:ds,time_slot:timeStr,company:'受付不可',duration:dur,isBlock:true});
         return;
       }
       if(co.length<2)return;
