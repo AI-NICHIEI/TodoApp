@@ -468,7 +468,7 @@ async function delCustomer(id,name){
 }
 
 function rImport(){
-  document.getElementById('wrap').innerHTML='<div style="max-width:800px"><div class="section-title">📥 スプレッドシート取込</div><div class="import-info">📋 シート「R7.10月～」から予約データを読み込みます。<br>✅ 会社名が入っている枠：空いていれば新規登録（すでに埋まっている枠はスキップ）<br>🚫 「×」印の枠：受付停止として登録／既存データがあっても上書きします<br>📌 8:30以降・B D F H J L列を取込みます。</div><button onclick="loadSheetPreview()" style="padding:13px 28px;border-radius:10px;border:none;background:linear-gradient(120deg,#7DBF3A,#5BB8E8);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:16px">📥 スプレッドシートを読み込む</button><div id="preview-area"></div></div>';
+  document.getElementById('wrap').innerHTML='<div style="max-width:800px"><div class="section-title">📥 スプレッドシート取込</div><div class="import-info">📋 シート「予測」から予約データを読み込みます。<br>✅ 会社名が入っている枠：空いていれば新規登録（すでに埋まっている枠はスキップ）<br>🚫 「×」印の枠：受付停止として登録／既存データがあっても上書きします<br>📌 8:30以降・B D F H J L列を取込みます。</div><button onclick="loadSheetPreview()" style="padding:13px 28px;border-radius:10px;border:none;background:linear-gradient(120deg,#7DBF3A,#5BB8E8);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:16px">📥 スプレッドシートを読み込む</button><div id="preview-area"></div></div>';
 }
 
 async function loadSheetPreview(){
