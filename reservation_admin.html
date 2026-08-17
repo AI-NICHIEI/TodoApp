@@ -492,16 +492,17 @@ async function loadSheetPreview(){
         else{item.status='overwrite-block';item.existingId=existing.id;}
       }else{
         if(!existing){item.status='new';}
-        else{item.status='skip';}
+        else if(existing.co===item.company){item.status='skip';}
+        else{item.status='overwrite';item.existingId=existing.id;item.existingCo=existing.co;}
       }
     });
-    var toProcess=importPreview.filter(function(i){return i.status==='new'||i.status==='new-block'||i.status==='overwrite-block';});
+    var toProcess=importPreview.filter(function(i){return i.status==='new'||i.status==='new-block'||i.status==='overwrite-block'||i.status==='overwrite';});
     var toSkip=importPreview.filter(function(i){return i.status==='skip'||i.status==='already-block';});
     var h='<div class="preview-table"><div class="preview-head">📋 読み込み結果：'+importPreview.length+'件（反映対象：'+toProcess.length+'件 ／ 変更なし：'+toSkip.length+'件）</div><div class="preview-list">';
     importPreview.forEach(function(item){
       var isSkip=(item.status==='skip'||item.status==='already-block');
-      var label=item.status==='new-block'?'新規停止':item.status==='overwrite-block'?'⚠️ 上書き(停止)':item.status==='already-block'?'変更なし':item.status==='new'?'新規':'スキップ';
-      var dispCo=item.isBlock?'🚫 受付停止':('🏢 '+esc(item.company));
+      var label=item.status==='new-block'?'新規停止':item.status==='overwrite-block'?'⚠️ 上書き(停止)':item.status==='already-block'?'変更なし':item.status==='new'?'新規':item.status==='overwrite'?'⚠️ 上書き':'スキップ';
+      var dispCo=item.isBlock?'🚫 受付停止':item.status==='overwrite'?('🏢 <s style="color:#aaa">'+esc(item.existingCo)+'</s> → '+esc(item.company)):('🏢 '+esc(item.company));
       var p=item.date.split('-'),m=parseInt(p[1]),d=parseInt(p[2]);
       var dow=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])).getDay();
       var dayName=['日','月','火','水','木','金','土'][dow];
@@ -509,7 +510,7 @@ async function loadSheetPreview(){
         +'<div style="font-size:12px;font-weight:700;color:'+(isSkip?'#bbb':'#5A9A1F')+';min-width:110px">'+m+'月'+d+'日（'+dayName+'）</div>'
         +'<div style="font-size:13px;font-weight:700;color:'+(isSkip?'#bbb':'#1A6E9A')+';min-width:52px">'+item.time_slot+'</div>'
         +'<div style="font-size:13px;flex:1;color:'+(isSkip?'#bbb':'#333')+'">'+dispCo+'</div>'
-        +'<div style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:8px;background:'+(isSkip?'#eee':(item.status==='overwrite-block'?'#FFE8E8':'#E8F7D0'))+';color:'+(isSkip?'#aaa':(item.status==='overwrite-block'?'#E05B5B':'#5A9A1F'))+'">'+label+'</div>'
+        +'<div style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:8px;background:'+(isSkip?'#eee':((item.status==='overwrite-block'||item.status==='overwrite')?'#FFE8E8':'#E8F7D0'))+';color:'+(isSkip?'#aaa':((item.status==='overwrite-block'||item.status==='overwrite')?'#E05B5B':'#5A9A1F'))+'">'+label+'</div>'
         +'</div>';
     });
     h+='</div></div>';
@@ -591,6 +592,11 @@ async function doImport(){
         var{error}=await db.from('reservations').update({company:BLOCK_MARKER}).eq('id',item.existingId);
         if(error){console.error('fail:',item.date,error.message);fail++;continue;}
         R[item.date+'_'+item.time_slot].co=BLOCK_MARKER;success++;
+      }else if(item.status==='overwrite'){
+        var{error}=await db.from('reservations').update({company:item.company,duration:item.duration}).eq('id',item.existingId);
+        if(error){console.error('fail:',item.date,error.message);fail++;continue;}
+        var key=item.date+'_'+item.time_slot;
+        R[key].co=item.company;R[key].dur=item.duration;success++;
       }else{
         var{data,error}=await db.from('reservations').insert([{
           date:item.date,
