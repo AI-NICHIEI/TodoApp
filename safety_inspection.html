@@ -137,18 +137,18 @@
       <div class="tabs" id="tabs"></div>
       <div class="card">
         <h2 id="catTitle"></h2>
-        <p class="hint" style="margin-top:0;">判定：○=良好　△=要注意（経過観察）　×=不良（即時改善／使用停止）　該当なし</p>
+        <p class="hint" style="margin-top:0;" id="judgeHint">判定：○=良好　△=要注意（経過観察）　×=不良（即時改善／使用停止）　該当なし</p>
         <div id="items"></div>
       </div>
 
-      <div class="card">
+      <div class="card" id="findCard">
         <h2>追加で見つかった箇所</h2>
         <div id="findings"></div>
         <button class="btn ghost sm" onclick="addFinding()">＋ 発見箇所を追加</button>
         <p class="hint">基本項目にない指摘は、ここに場所・内容を書いて追加できます。</p>
       </div>
 
-      <div class="card">
+      <div class="card" id="sumCard">
         <h2>判定集計</h2>
         <div class="sum">
           <div class="a"><div class="n" id="cOk">0</div>○ 良</div>
@@ -414,6 +414,7 @@ let site = null, siteObj = null, current = 0, session = "", channel = null;
 let itemNodes = {};
 let state = {};        // itemKey -> {result,note,comment,assignee,due,by}
 let findings = [];     // {id, location, result, comment, assignee, due, by}
+let hiyari = [];       // ヒヤリハット {id, date, place, detail, action, assignee, photos, by}
 let members = [];      // {id,name}
 let participants = {};  // name -> true
 let prevMap = {};       // 前回結果: item text -> {result, comment, note}
@@ -513,6 +514,11 @@ function renderTabs(){
     b.onclick=()=>{ current=ci; renderTabs(); renderItems(); };
     el.appendChild(b);
   });
+  const hb=document.createElement("div");
+  hb.className="tab"+(current==="hiyari"?" active":"");
+  hb.innerHTML='⚠️ ヒヤリハット'+(hiyari.length?'<span class="cnt">'+hiyari.length+'</span>':'');
+  hb.onclick=()=>{ current="hiyari"; renderTabs(); renderItems(); };
+  el.appendChild(hb);
 }
 function judgeClass(v){ const j=JUDGES.find(x=>x.v===v); return j?j.c:""; }
 function paintItem(ci,ii){
@@ -580,6 +586,11 @@ function memberOptions(sel){
   return o;
 }
 function renderItems(){
+  const isH=(current==="hiyari");
+  document.getElementById("judgeHint").style.display=isH?"none":"";
+  document.getElementById("findCard").style.display=isH?"none":"";
+  document.getElementById("sumCard").style.display=isH?"none":"";
+  if(isH){ document.getElementById("catTitle").textContent="⚠️ ヒヤリハット"; renderHiyari(); return; }
   const cat=siteObj.cats[current];
   document.getElementById("catTitle").textContent=cat.name;
   const box=document.getElementById("items"); box.innerHTML=""; itemNodes={};
@@ -673,6 +684,75 @@ async function delFinding(id){
   if(sb && session) await sb.from("si_live").delete().eq("session_id",session).eq("item_key","extra:"+id);
 }
 
+/* ===================== ヒヤリハット ===================== */
+function renderHiyariPhotos(node,h){
+  const box=node.querySelector('.photos[data-g="h"]'); if(!box) return;
+  const arr=h.photos||[]; box.innerHTML="";
+  arr.forEach((u,idx)=>{
+    const w=document.createElement("span"); w.className="thumb";
+    const im=document.createElement("img"); im.src=u; im.onclick=()=>window.open(u,"_blank");
+    const x=document.createElement("b"); x.textContent="×";
+    x.onclick=()=>{ h.photos.splice(idx,1); h.by=myName(); renderHiyariPhotos(node,h); pushHiyari(h); };
+    w.appendChild(im); w.appendChild(x); box.appendChild(w);
+  });
+}
+function renderHiyari(){
+  const box=document.getElementById("items"); box.innerHTML="";
+  const info=document.createElement("p"); info.className="hint"; info.style.marginTop="0";
+  info.textContent="事故には至らなかったが「ヒヤリ」「ハッと」した事例を記録します。";
+  box.appendChild(info);
+  hiyari.forEach(h=>{
+    const el=document.createElement("div"); el.className="findrow";
+    el.innerHTML=
+      '<div class="row2"><div><label class="fld">発生日</label><input type="date" class="hdate"></div>'+
+      '<div><label class="fld">場所</label><input type="text" class="hplace" placeholder="発生場所"></div></div>'+
+      '<label class="fld">内容（何がヒヤリ・ハッとしたか）</label><textarea class="hdetail" placeholder="状況・危険だった内容"></textarea>'+
+      '<label class="fld">対策・改善</label><textarea class="haction" placeholder="今後の対策"></textarea>'+
+      '<label class="fld">担当者</label><select class="hasg">'+memberOptions(h.assignee)+'</select>'+
+      '<div class="phgroup"><div class="phlabel">写真</div><div class="photos" data-g="h"></div>'+
+        '<label class="phadd" data-g="h">📷 写真を追加<input type="file" accept="image/*" capture="environment" class="ph-in" style="display:none;"></label></div>'+
+      '<button class="btn warn sm" style="margin-top:8px;">この記録を削除</button>';
+    const dt=el.querySelector(".hdate"); dt.value=h.date||""; dt.onchange=()=>{ h.date=dt.value; h.by=myName(); pushHiyari(h); };
+    const pl=el.querySelector(".hplace"); pl.value=h.place||""; pl.oninput=()=>{ h.place=pl.value; h.by=myName(); pushHiyariD(h); };
+    const de=el.querySelector(".hdetail"); de.value=h.detail||""; de.oninput=()=>{ h.detail=de.value; h.by=myName(); pushHiyariD(h); };
+    const ac=el.querySelector(".haction"); ac.value=h.action||""; ac.oninput=()=>{ h.action=ac.value; h.by=myName(); pushHiyariD(h); };
+    const as=el.querySelector(".hasg"); as.value=h.assignee||""; as.onchange=()=>{ h.assignee=as.value; h.by=myName(); pushHiyari(h); };
+    renderHiyariPhotos(el,h);
+    const phLabel=el.querySelector(".phadd"), ph=el.querySelector(".ph-in"), orig=phLabel.firstChild.textContent;
+    ph.onchange=async()=>{
+      const files=Array.from(ph.files||[]); ph.value="";
+      if(!files.length) return;
+      if(!sb){ showMsg("Supabase未接続のため写真を保存できません。","err"); return; }
+      phLabel.classList.add("busy"); phLabel.firstChild.textContent="📷 アップロード中…";
+      for(const f of files){ try{ const u=await uploadPhoto(f); (h.photos=h.photos||[]).push(u); h.by=myName(); renderHiyariPhotos(el,h); pushHiyari(h); }catch(e){ console.error(e); showMsg("写真アップロード失敗："+(e.message||e),"err"); } }
+      phLabel.classList.remove("busy"); phLabel.firstChild.textContent=orig;
+    };
+    el.querySelector(".btn.warn").onclick=()=>delHiyari(h.id);
+    box.appendChild(el);
+  });
+  const add=document.createElement("button"); add.className="btn ghost sm"; add.textContent="＋ ヒヤリハットを追加"; add.onclick=addHiyari;
+  box.appendChild(add);
+}
+function addHiyari(){
+  const h={id:"h"+Date.now()+Math.floor(Math.random()*999),date:todayStr(),place:"",detail:"",action:"",assignee:"",photos:[],by:myName()};
+  hiyari.push(h); renderHiyari(); renderTabs(); pushHiyari(h);
+}
+async function delHiyari(id){
+  hiyari=hiyari.filter(h=>h.id!==id); renderHiyari(); renderTabs();
+  if(sb && session) await sb.from("si_live").delete().eq("session_id",session).eq("item_key","hiyari:"+id);
+}
+function pushHiyariD(h){ clearTimeout(h._t); h._t=setTimeout(()=>pushHiyari(h),500); }
+async function pushHiyari(h){
+  if(!session) return;
+  const obj={id:h.id,date:h.date||"",place:h.place||"",detail:h.detail||"",action:h.action||"",assignee:h.assignee||"",photos:h.photos||[],by:h.by||""};
+  const row={session_id:session,item_key:"hiyari:"+h.id,category:"ヒヤリハット",item:h.place||"",
+    result:"",note:"",comment:JSON.stringify(obj),assignee:h.assignee||"",due_date:null,updated_by:h.by,photos:""};
+  broadcast(row);
+  if(!sb) return;
+  const {error}=await sb.from("si_live").upsert([row],{onConflict:"session_id,item_key"});
+  if(error) console.error("pushHiyari",error);
+}
+
 /* ===================== Realtime ===================== */
 async function joinSession(){
   if(!siteObj){ showMsg("先に拠点を選んでください。","err"); return; }
@@ -680,7 +760,7 @@ async function joinSession(){
   if(!document.getElementById("inspector").value.trim()){ showMsg("あなたの名前を入力してください。","err"); return; }
   const date=document.getElementById("date").value||todayStr();
   session=site+"|"+date;
-  buildState(); findings=[];
+  buildState(); findings=[]; hiyari=[];
   await loadPrev();
 
   const {data,error}=await sb.from("si_live").select("*").eq("session_id",session);
@@ -711,6 +791,15 @@ async function joinSession(){
 }
 function applyRow(r,live){
   if(!r||!r.item_key) return;
+  if(r.item_key.indexOf("hiyari:")===0){
+    const id=r.item_key.slice(7);
+    let obj={}; try{ obj=JSON.parse(r.comment||"{}"); }catch(e){ obj={}; }
+    let h=hiyari.find(x=>x.id===id);
+    if(!h){ h={id:id}; hiyari.push(h); }
+    h.date=obj.date||""; h.place=obj.place||""; h.detail=obj.detail||""; h.action=obj.action||""; h.assignee=obj.assignee||""; h.photos=obj.photos||[]; h.by=obj.by||r.updated_by||"";
+    if(live){ if(current==="hiyari" && !document.getElementById("items").contains(document.activeElement)) renderHiyari(); renderTabs(); }
+    return;
+  }
   if(r.item_key.indexOf("extra:")===0){
     const id=r.item_key.slice(6);
     let f=findings.find(x=>x.id===id);
@@ -773,13 +862,14 @@ async function save(){
   });
   if(unanswered>0 && !confirm("未回答が "+unanswered+" 項目あります。確定保存しますか？")) return;
 
+  const hlist=hiyari.filter(h=>h.place||h.detail||h.action).map(h=>({date:h.date||"",place:h.place||"",detail:h.detail||"",action:h.action||"",assignee:h.assignee||"",photos:h.photos||[]}));
   const rec={site:siteObj.name,inspection_date:date,weather:weather,participants:parts,
-    results:results,findings:fin,ok_count:ok,warn_count:w,ng_count:ng};
+    results:results,findings:fin,hiyari:hlist,ok_count:ok,warn_count:w,ng_count:ng};
   const btn=document.getElementById("saveBtn"); btn.disabled=true; btn.textContent="保存中…";
   const {error}=await sb.from("si_records").insert([rec]);
   if(error){ btn.disabled=false; btn.textContent="点検を確定して保存する"; showMsg("保存失敗："+error.message,"err"); return; }
   await sb.from("si_live").delete().eq("session_id",session);
-  buildState(); findings=[]; await loadPrev(); renderTabs(); renderItems(); renderFindings();
+  buildState(); findings=[]; hiyari=[]; current=0; await loadPrev(); renderTabs(); renderItems(); renderFindings();
   btn.disabled=false; btn.textContent="点検を確定して保存する";
   showMsg("保存しました。（○"+ok+" / △"+w+" / ×"+ng+"）","ok");
 }
@@ -787,7 +877,7 @@ async function clearSession(){
   if(!sb||!session){ return; }
   if(!confirm("この点検の入力をすべて消去しますか？")) return;
   await sb.from("si_live").delete().eq("session_id",session);
-  buildState(); findings=[]; renderTabs(); renderItems(); renderFindings();
+  buildState(); findings=[]; hiyari=[]; current=0; renderTabs(); renderItems(); renderFindings();
   showMsg("入力を消去しました。","info");
 }
 
@@ -808,9 +898,11 @@ async function loadHistory(){
     const ngItems=(r.results||[]).filter(x=>x.result==="不良"||x.result==="要注意");
     if(ngItems.length){ det+="<br>指摘："+ngItems.slice(0,6).map(x=>sym(x.result)+esc(x.item)+(x.comment?"（"+esc(x.comment)+"）":"")).join(" / "); if(ngItems.length>6) det+=" ほか"; }
     if(r.findings&&r.findings.length){ det+="<br>追加："+r.findings.map(f=>esc(f.location)).filter(Boolean).join(" / "); }
-    const bU=[],aU=[]; (r.results||[]).forEach(x=>{ const p=parsePhotos(x.photos); p.before.forEach(u=>bU.push(u)); p.after.forEach(u=>aU.push(u)); });
+    if(r.hiyari&&r.hiyari.length){ det+="<br>⚠️ ヒヤリハット："+r.hiyari.map(h=>esc((h.place?h.place+"：":"")+(h.detail||""))).filter(Boolean).join(" / "); }
+    const bU=[],aU=[],hU=[]; (r.results||[]).forEach(x=>{ const p=parsePhotos(x.photos); p.before.forEach(u=>bU.push(u)); p.after.forEach(u=>aU.push(u)); });
+    (r.hiyari||[]).forEach(h=>{ (h.photos||[]).forEach(u=>hU.push(u)); });
     function gallery(label,urls){ return urls.length?('<div class="hgrp">'+label+'</div><div class="hthumb">'+urls.map(u=>'<img src="'+esc(u)+'" onclick="window.open(this.src,\'_blank\')">').join('')+'</div>'):''; }
-    const photoHtml=gallery("改善前",bU)+gallery("改善後",aU);
+    const photoHtml=gallery("改善前",bU)+gallery("改善後",aU)+gallery("ヒヤリハット",hU);
     d.innerHTML='<div class="top"><span>'+normDate(r.inspection_date)+'</span><span>'+badges+'</span></div><div class="prev" style="margin-top:6px;">'+det+'</div>'+photoHtml;
     box.appendChild(d);
   });
