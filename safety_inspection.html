@@ -607,9 +607,9 @@ function renderItems(){
       '<div class="choices">'+JUDGES.map(j=>'<button data-v="'+j.v+'">'+j.label+'</button>').join('')+'</div>'+
       '<label class="fld">特記事項（メモ）</label><input type="text" class="note-in" placeholder="確認内容・メモ（任意）">'+
       '<div class="phgroup"><div class="phlabel">改善前の写真</div><div class="photos" data-g="before"></div>'+
-        '<label class="phadd" data-g="before">📷 改善前を追加<input type="file" accept="image/*" capture="environment" class="ph-in" style="display:none;"></label></div>'+
+        '<label class="phadd" data-g="before">📷 改善前を追加<input type="file" accept="image/*" class="ph-in" style="display:none;"></label></div>'+
       '<div class="phgroup"><div class="phlabel">改善後の写真</div><div class="photos" data-g="after"></div>'+
-        '<label class="phadd" data-g="after">📷 改善後を追加<input type="file" accept="image/*" capture="environment" class="ph-in" style="display:none;"></label></div>'+
+        '<label class="phadd" data-g="after">📷 改善後を追加<input type="file" accept="image/*" class="ph-in" style="display:none;"></label></div>'+
       '<div class="detail">'+
         '<label class="fld">指導事項・改善コメント</label><textarea class="cmt" placeholder="指摘内容・指導事項"></textarea>'+
         '<div class="row2"><div><label class="fld">担当者</label><select class="asg">'+memberOptions(st.assignee)+'</select></div>'+
@@ -710,7 +710,7 @@ function renderHiyari(){
       '<label class="fld">対策・改善</label><textarea class="haction" placeholder="今後の対策"></textarea>'+
       '<label class="fld">担当者</label><select class="hasg">'+memberOptions(h.assignee)+'</select>'+
       '<div class="phgroup"><div class="phlabel">写真</div><div class="photos" data-g="h"></div>'+
-        '<label class="phadd" data-g="h">📷 写真を追加<input type="file" accept="image/*" capture="environment" class="ph-in" style="display:none;"></label></div>'+
+        '<label class="phadd" data-g="h">📷 写真を追加<input type="file" accept="image/*" class="ph-in" style="display:none;"></label></div>'+
       '<button class="btn warn sm" style="margin-top:8px;">この記録を削除</button>';
     const dt=el.querySelector(".hdate"); dt.value=h.date||""; dt.onchange=()=>{ h.date=dt.value; h.by=myName(); pushHiyari(h); };
     const pl=el.querySelector(".hplace"); pl.value=h.place||""; pl.oninput=()=>{ h.place=pl.value; h.by=myName(); pushHiyariD(h); };
