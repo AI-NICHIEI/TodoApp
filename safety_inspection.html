@@ -54,6 +54,16 @@
   .detail{margin-top:9px;display:none;}
   .detail.show{display:block;}
   .by{font-size:11px;color:#9aa4b2;margin-top:6px;min-height:13px;}
+  .photos{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0;}
+  .thumb{position:relative;display:inline-block;}
+  .thumb img{width:66px;height:66px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer;}
+  .thumb b{position:absolute;top:-7px;right:-7px;background:var(--ng);color:#fff;width:19px;height:19px;border-radius:50%;font-size:13px;line-height:19px;text-align:center;cursor:pointer;font-weight:700;}
+  .phgroup{margin-top:8px;}
+  .phlabel{font-size:13px;font-weight:700;color:#55606e;margin-bottom:2px;}
+  .phadd{display:inline-block;margin:4px 0 2px;padding:9px 13px;border:2px dashed var(--btn);border-radius:10px;color:var(--btn-dark);font-weight:700;font-size:14px;cursor:pointer;}
+  .phadd.busy{opacity:.5;pointer-events:none;}
+  .hgrp{font-size:12px;font-weight:700;color:#6b6338;margin-top:6px;}
+  .hthumb img{width:58px;height:58px;object-fit:cover;border-radius:6px;border:1px solid var(--line);margin:6px 5px 0 0;cursor:pointer;}
   .btn{display:block;width:100%;padding:15px;border:none;border-radius:12px;font-size:16px;font-weight:700;color:#fff;background:var(--btn);cursor:pointer;margin-top:6px;}
   .btn:active{background:var(--btn-dark);}
   .btn.ghost{background:#fff;color:var(--btn-dark);border:2px solid var(--btn);}
@@ -411,7 +421,7 @@ let prevMap = {};       // 前回結果: item text -> {result, comment, note}
 function itemKey(ci,ii){ return ci+"_"+ii; }
 function buildState(){
   state = {};
-  siteObj.cats.forEach((c,ci)=> c.items.forEach((_,ii)=>{ state[itemKey(ci,ii)]={result:"",note:"",comment:"",assignee:"",due:"",by:""}; }));
+  siteObj.cats.forEach((c,ci)=> c.items.forEach((_,ii)=>{ state[itemKey(ci,ii)]={result:"",note:"",comment:"",assignee:"",due:"",by:"",photos:{before:[],after:[]}}; }));
 }
 function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function normDate(v){ return v?String(v).split("T")[0]:""; }
@@ -517,7 +527,51 @@ function paintItem(ci,ii){
   const asg=node.querySelector(".asg"); if(document.activeElement!==asg && asg.value!==st.assignee) asg.value=st.assignee;
   const due=node.querySelector(".due"); if(document.activeElement!==due && due.value!==st.due) due.value=st.due;
   node.querySelector(".by").textContent=st.by?("最終更新："+st.by):"";
+  renderItemPhotos(node,key);
   updateSummary();
+}
+/* ===================== 写真 ===================== */
+function parsePhotos(v){
+  let o=v;
+  if(typeof v==="string"){ try{ o=JSON.parse(v); }catch(e){ o=null; } }
+  if(Array.isArray(o)) return {before:o, after:[]};
+  if(o && typeof o==="object") return {before:o.before||[], after:o.after||[]};
+  return {before:[], after:[]};
+}
+function compressImage(file){
+  return new Promise((res,rej)=>{
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{ const max=1280; let w=img.width,h=img.height;
+      if(w>h && w>max){ h=Math.round(h*max/w); w=max; } else if(h>=w && h>max){ w=Math.round(w*max/h); h=max; }
+      const c=document.createElement("canvas"); c.width=w; c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h); URL.revokeObjectURL(url);
+      c.toBlob(b=>res(b),"image/jpeg",0.7);
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error("画像を読み込めませんでした")); };
+    img.src=url;
+  });
+}
+async function uploadPhoto(file){
+  const blob=await compressImage(file);
+  const safe=session.replace(/[^0-9A-Za-z]+/g,"_");
+  const path=safe+"/"+Date.now()+"_"+Math.floor(Math.random()*99999)+".jpg";
+  const {error}=await sb.storage.from("inspection-photos").upload(path,blob,{contentType:"image/jpeg",upsert:false});
+  if(error) throw error;
+  return sb.storage.from("inspection-photos").getPublicUrl(path).data.publicUrl;
+}
+function renderItemPhotos(node,key){
+  const ph=state[key].photos||{before:[],after:[]};
+  ["before","after"].forEach(g=>{
+    const box=node.querySelector('.photos[data-g="'+g+'"]'); if(!box) return;
+    const arr=ph[g]||[]; box.innerHTML="";
+    arr.forEach((u,idx)=>{
+      const w=document.createElement("span"); w.className="thumb";
+      const im=document.createElement("img"); im.src=u; im.onclick=()=>window.open(u,"_blank");
+      const x=document.createElement("b"); x.textContent="×";
+      x.onclick=()=>{ state[key].photos[g].splice(idx,1); state[key].by=myName(); renderItemPhotos(node,key); const p=key.split("_"); push(+p[0],+p[1]); };
+      w.appendChild(im); w.appendChild(x); box.appendChild(w);
+    });
+  });
 }
 function memberOptions(sel){
   let o='<option value="">担当者（任意）</option>';
@@ -541,6 +595,10 @@ function renderItems(){
       prevHtml+
       '<div class="choices">'+JUDGES.map(j=>'<button data-v="'+j.v+'">'+j.label+'</button>').join('')+'</div>'+
       '<label class="fld">特記事項（メモ）</label><input type="text" class="note-in" placeholder="確認内容・メモ（任意）">'+
+      '<div class="phgroup"><div class="phlabel">改善前の写真</div><div class="photos" data-g="before"></div>'+
+        '<label class="phadd" data-g="before">📷 改善前を追加<input type="file" accept="image/*" capture="environment" class="ph-in" style="display:none;"></label></div>'+
+      '<div class="phgroup"><div class="phlabel">改善後の写真</div><div class="photos" data-g="after"></div>'+
+        '<label class="phadd" data-g="after">📷 改善後を追加<input type="file" accept="image/*" capture="environment" class="ph-in" style="display:none;"></label></div>'+
       '<div class="detail">'+
         '<label class="fld">指導事項・改善コメント</label><textarea class="cmt" placeholder="指摘内容・指導事項"></textarea>'+
         '<div class="row2"><div><label class="fld">担当者</label><select class="asg">'+memberOptions(st.assignee)+'</select></div>'+
@@ -555,7 +613,21 @@ function renderItems(){
     const ta=el.querySelector(".cmt"); ta.oninput=()=>{ st.comment=ta.value; st.by=myName(); clearTimeout(t1); t1=setTimeout(()=>push(current,ii),500); };
     const asg=el.querySelector(".asg"); asg.onchange=()=>{ st.assignee=asg.value; st.by=myName(); push(current,ii); };
     const due=el.querySelector(".due"); due.onchange=()=>{ st.due=due.value; st.by=myName(); push(current,ii); };
-    itemNodes[key]=el; box.appendChild(el); paintItem(current,ii);
+    el.querySelectorAll(".phadd").forEach(phLabel=>{
+      const g=phLabel.dataset.g, ph=phLabel.querySelector(".ph-in"), orig=phLabel.firstChild.textContent;
+      ph.onchange=async()=>{
+        const files=Array.from(ph.files||[]); ph.value="";
+        if(!files.length) return;
+        if(!sb){ showMsg("Supabase未接続のため写真を保存できません。","err"); return; }
+        phLabel.classList.add("busy"); phLabel.firstChild.textContent="📷 アップロード中…";
+        for(const f of files){
+          try{ const u=await uploadPhoto(f); if(!st.photos) st.photos={before:[],after:[]}; (st.photos[g]=st.photos[g]||[]).push(u); st.by=myName(); renderItemPhotos(el,key); push(current,ii); }
+          catch(e){ console.error(e); showMsg("写真アップロード失敗："+(e.message||e),"err"); }
+        }
+        phLabel.classList.remove("busy"); phLabel.firstChild.textContent=orig;
+      };
+    });
+    itemNodes[key]=el; box.appendChild(el); renderItemPhotos(el,key); paintItem(current,ii);
   });
 }
 function updateSummary(){
@@ -648,7 +720,7 @@ function applyRow(r,live){
     return;
   }
   if(!(r.item_key in state)) return;
-  state[r.item_key]={result:r.result||"",note:r.note||"",comment:r.comment||"",assignee:r.assignee||"",due:normDate(r.due_date),by:r.updated_by||""};
+  state[r.item_key]={result:r.result||"",note:r.note||"",comment:r.comment||"",assignee:r.assignee||"",due:normDate(r.due_date),by:r.updated_by||"",photos:parsePhotos(r.photos)};
   if(live){
     const parts=r.item_key.split("_"), ci=parseInt(parts[0],10), ii=parseInt(parts[1],10);
     if(ci===current){ paintItem(ci,ii); flash(r.item_key); }
@@ -662,7 +734,7 @@ async function push(ci,ii){
   if(!session) return;
   const key=itemKey(ci,ii), st=state[key], it=siteObj.cats[ci].items[ii];
   const row={session_id:session,item_key:key,category:siteObj.cats[ci].name,item:it.t,
-    result:st.result,note:st.note,comment:st.comment,assignee:st.assignee,due_date:st.due||null,updated_by:st.by};
+    result:st.result,note:st.note,comment:st.comment,assignee:st.assignee,due_date:st.due||null,updated_by:st.by,photos:JSON.stringify(st.photos||{before:[],after:[]})};
   broadcast(row);                          // 相手画面へ即送信（追加設定不要）
   if(!sb) return;
   const {error}=await sb.from("si_live").upsert([row],{onConflict:"session_id,item_key"});  // 永続化（再読込・後から参加した人用）
@@ -693,7 +765,7 @@ async function save(){
     const st=state[itemKey(ci,ii)];
     if(!st.result) unanswered++;
     if(st.result==="良")ok++; else if(st.result==="要注意")w++; else if(st.result==="不良")ng++;
-    results.push({category:c.name,item:it.t,result:st.result||"未回答",note:st.note||"",comment:st.comment||"",assignee:st.assignee||"",due:st.due||""});
+    results.push({category:c.name,item:it.t,result:st.result||"未回答",note:st.note||"",comment:st.comment||"",assignee:st.assignee||"",due:st.due||"",photos:st.photos||{before:[],after:[]}});
   }));
   const fin=findings.filter(f=>f.location||f.result).map(f=>{
     if(f.result==="良")ok++; else if(f.result==="要注意")w++; else if(f.result==="不良")ng++;
@@ -736,7 +808,10 @@ async function loadHistory(){
     const ngItems=(r.results||[]).filter(x=>x.result==="不良"||x.result==="要注意");
     if(ngItems.length){ det+="<br>指摘："+ngItems.slice(0,6).map(x=>sym(x.result)+esc(x.item)+(x.comment?"（"+esc(x.comment)+"）":"")).join(" / "); if(ngItems.length>6) det+=" ほか"; }
     if(r.findings&&r.findings.length){ det+="<br>追加："+r.findings.map(f=>esc(f.location)).filter(Boolean).join(" / "); }
-    d.innerHTML='<div class="top"><span>'+normDate(r.inspection_date)+'</span><span>'+badges+'</span></div><div class="prev" style="margin-top:6px;">'+det+'</div>';
+    const bU=[],aU=[]; (r.results||[]).forEach(x=>{ const p=parsePhotos(x.photos); p.before.forEach(u=>bU.push(u)); p.after.forEach(u=>aU.push(u)); });
+    function gallery(label,urls){ return urls.length?('<div class="hgrp">'+label+'</div><div class="hthumb">'+urls.map(u=>'<img src="'+esc(u)+'" onclick="window.open(this.src,\'_blank\')">').join('')+'</div>'):''; }
+    const photoHtml=gallery("改善前",bU)+gallery("改善後",aU);
+    d.innerHTML='<div class="top"><span>'+normDate(r.inspection_date)+'</span><span>'+badges+'</span></div><div class="prev" style="margin-top:6px;">'+det+'</div>'+photoHtml;
     box.appendChild(d);
   });
 }
