@@ -64,6 +64,16 @@
   .phadd.busy{opacity:.5;pointer-events:none;}
   .hgrp{font-size:12px;font-weight:700;color:#6b6338;margin-top:6px;}
   .hthumb img{width:58px;height:58px;object-fit:cover;border-radius:6px;border:1px solid var(--line);margin:6px 5px 0 0;cursor:pointer;}
+  .hist{cursor:pointer;}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 12px;}
+  .modalbox{background:#fff;border-radius:14px;max-width:760px;width:100%;padding:18px;position:relative;box-shadow:0 8px 30px rgba(0,0,0,.25);}
+  .modalclose{position:absolute;top:8px;right:12px;background:none;border:none;font-size:28px;line-height:1;cursor:pointer;color:#55606e;}
+  .dh{font-size:18px;font-weight:800;color:var(--blue-dark);padding-right:30px;}
+  .dmeta{font-size:13px;color:#66707e;margin-top:2px;}
+  .dcat{font-weight:700;color:var(--blue-dark);margin:14px 0 4px;border-left:4px solid var(--btn);padding-left:8px;}
+  .drow{border-bottom:1px solid var(--line);padding:7px 0;font-size:14px;}
+  .drow b{margin-right:4px;font-size:15px;}
+  .dsub{font-size:12px;color:#66707e;margin-top:2px;}
   .btn{display:block;width:100%;padding:15px;border:none;border-radius:12px;font-size:16px;font-weight:700;color:#fff;background:var(--btn);cursor:pointer;margin-top:6px;}
   .btn:active{background:var(--btn-dark);}
   .btn.ghost{background:#fff;color:var(--btn-dark);border:2px solid var(--btn);}
@@ -178,8 +188,17 @@
   <div id="view-hist" style="display:none;">
     <div class="card">
       <h2>過去の点検記録</h2>
+      <p class="hint" style="margin-top:0;">各記録をタップすると全項目の詳細が見られます。</p>
       <div id="histList"><div class="empty">読み込み中…</div></div>
       <button class="btn ghost" onclick="loadHistory()">再読み込み</button>
+    </div>
+  </div>
+
+  <!-- ===== 履歴 詳細モーダル ===== -->
+  <div id="histModal" class="modal" style="display:none;" onclick="if(event.target===this)closeHistDetail()">
+    <div class="modalbox">
+      <button class="modalclose" onclick="closeHistDetail()">×</button>
+      <div id="histDetail"></div>
     </div>
   </div>
 
@@ -415,6 +434,7 @@ let itemNodes = {};
 let state = {};        // itemKey -> {result,note,comment,assignee,due,by}
 let findings = [];     // {id, location, result, comment, assignee, due, by}
 let hiyari = [];       // ヒヤリハット {id, date, place, detail, action, assignee, photos, by}
+let histRecords = [];  // 履歴データ（詳細表示用）
 let members = [];      // {id,name}
 let participants = {};  // name -> true
 let prevMap = {};       // 前回結果: item text -> {result, comment, note}
@@ -889,9 +909,9 @@ async function loadHistory(){
   const {data,error}=await sb.from("si_records").select("*").order("inspection_date",{ascending:false}).order("id",{ascending:false}).limit(60);
   if(error){ box.innerHTML='<div class="empty">読み込み失敗：'+esc(error.message)+'</div>'; return; }
   if(!data||!data.length){ box.innerHTML='<div class="empty">記録がありません。</div>'; return; }
-  box.innerHTML="";
-  data.forEach(r=>{
-    const d=document.createElement("div"); d.className="hist";
+  box.innerHTML=""; histRecords=data;
+  data.forEach((r,ri)=>{
+    const d=document.createElement("div"); d.className="hist"; d.onclick=()=>openHistDetail(ri);
     const badges='<span class="badge ok">○ '+(r.ok_count||0)+'</span><span class="badge warn">△ '+(r.warn_count||0)+'</span><span class="badge ng">× '+(r.ng_count||0)+'</span>';
     let det="拠点："+esc(r.site||"-")+" ／ 天候："+esc(r.weather||"-");
     if(r.participants&&r.participants.length) det+="<br>参加："+esc(r.participants.join("・"));
@@ -907,6 +927,36 @@ async function loadHistory(){
     box.appendChild(d);
   });
 }
+function histImg(u){ return '<img src="'+esc(u)+'" onclick="window.open(this.src,\'_blank\')">'; }
+function recordDetailHtml(r){
+  let h='<div class="dh">'+normDate(r.inspection_date)+'　'+esc(r.site||"")+'</div>';
+  h+='<div class="dmeta">天候：'+esc(r.weather||"-")+(r.participants&&r.participants.length?'　／　参加：'+esc(r.participants.join("・")):'')+'</div>';
+  h+='<div class="dmeta">○ '+(r.ok_count||0)+'　△ '+(r.warn_count||0)+'　× '+(r.ng_count||0)+'</div>';
+  let curCat="";
+  (r.results||[]).forEach(x=>{
+    if(x.category!==curCat){ curCat=x.category; h+='<div class="dcat">'+esc(curCat)+'</div>'; }
+    const p=parsePhotos(x.photos);
+    h+='<div class="drow"><b>'+esc(sym(x.result))+'</b>'+esc(x.item);
+    if(x.note) h+='<div class="dsub">特記：'+esc(x.note)+'</div>';
+    if(x.comment) h+='<div class="dsub">指導：'+esc(x.comment)+(x.assignee?'（担当：'+esc(x.assignee)+'）':'')+(x.due?'（期限：'+esc(x.due)+'）':'')+'</div>';
+    if(p.before.length) h+='<div class="dsub">改善前の写真</div><div class="hthumb">'+p.before.map(histImg).join('')+'</div>';
+    if(p.after.length) h+='<div class="dsub">改善後の写真</div><div class="hthumb">'+p.after.map(histImg).join('')+'</div>';
+    h+='</div>';
+  });
+  if(r.findings&&r.findings.length){ h+='<div class="dcat">追加で見つかった箇所</div>';
+    r.findings.forEach(f=>{ h+='<div class="drow"><b>'+esc(sym(f.result))+'</b>'+esc(f.location||"")+(f.comment?'<div class="dsub">'+esc(f.comment)+(f.assignee?'（担当：'+esc(f.assignee)+'）':'')+(f.due?'（期限：'+esc(f.due)+'）':'')+'</div>':'')+'</div>'; }); }
+  if(r.hiyari&&r.hiyari.length){ h+='<div class="dcat">⚠️ ヒヤリハット</div>';
+    r.hiyari.forEach(hi=>{ h+='<div class="drow">'+(hi.date?esc(hi.date)+'　':'')+'<b>'+esc(hi.place||"")+'</b>'+
+      '<div class="dsub">内容：'+esc(hi.detail||"")+'</div>'+(hi.action?'<div class="dsub">対策：'+esc(hi.action)+'</div>':'')+(hi.assignee?'<div class="dsub">担当：'+esc(hi.assignee)+'</div>':'')+
+      ((hi.photos&&hi.photos.length)?'<div class="hthumb">'+hi.photos.map(histImg).join('')+'</div>':'')+'</div>'; }); }
+  return h;
+}
+function openHistDetail(idx){
+  const r=histRecords[idx]; if(!r) return;
+  document.getElementById("histDetail").innerHTML=recordDetailHtml(r);
+  document.getElementById("histModal").style.display="flex";
+}
+function closeHistDetail(){ document.getElementById("histModal").style.display="none"; }
 
 /* ===================== ビュー切替 ===================== */
 function showView(v){
