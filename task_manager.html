@@ -606,10 +606,46 @@ function openMinutesDetail(id){
     '</div>'+th+
     '<div class="info-label" style="margin-bottom:6px">議事録</div>'+
     '<div class="minutes-body">'+escHtml(m.body)+'</div>'+
+    '<button class="big-btn btn-primary" onclick="printMinutes('+id+')"><i class="ti ti-printer"></i>印刷・PDF用の画面を開く</button>'+
     '<button class="big-btn btn-sky" onclick="editMinutesDetail('+id+')"><i class="ti ti-pencil"></i>議事録を編集</button>'+
     '<button class="big-btn btn-danger" onclick="deleteMinutesItem('+id+')"><i class="ti ti-trash"></i>この議事録を削除</button>'+
     '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i>閉じる</button>'+
     '</div></div>';
+}
+function printMinutes(id){
+  const m=minutesList.find(x=>x.id===id);if(!m)return;
+  const ids=parseIds(m.task_ids).map(String);
+  const linked=tasks.filter(t=>ids.includes(String(t.id)));
+  let rows='';
+  linked.forEach(t=>{
+    rows+='<tr><td>'+escHtml(parsePersons(t.person).join('・'))+'</td><td>'+escHtml(t.title)+'</td><td>'+(t.due?fmtDate(t.due):'未設定')+'</td><td>'+statusLabel(t.status)+'</td></tr>';
+  });
+  const taskHtml=linked.length?'<h2>関連タスク（'+linked.length+'件）</h2><table><thead><tr><th>担当</th><th>内容</th><th>期限</th><th>状況</th></tr></thead><tbody>'+rows+'</tbody></table>':'';
+  const html='<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
+    '<title>'+escHtml(m.title)+'</title><style>'+
+    '@page{size:A4;margin:15mm}'+
+    'body{font-family:"Yu Gothic","Meiryo",sans-serif;color:#222;max-width:800px;margin:0 auto;padding:20px;line-height:1.8;font-size:14px}'+
+    '.bar{position:sticky;top:0;background:#fff;padding:10px 0;border-bottom:1px solid #ddd;margin-bottom:16px;display:flex;gap:8px}'+
+    '.bar button{padding:10px 18px;font-size:15px;border:none;border-radius:8px;background:#5A9A1F;color:#fff;cursor:pointer}'+
+    '.bar button.g{background:#888}'+
+    'h1{font-size:22px;border-bottom:3px solid #5A9A1F;padding-bottom:8px;margin:0 0 10px}'+
+    'h2{font-size:16px;margin:22px 0 8px;border-left:5px solid #5A9A1F;padding-left:8px}'+
+    '.meta{color:#555;margin-bottom:8px}'+
+    '.body{white-space:pre-wrap;word-break:break-word}'+
+    'table{width:100%;border-collapse:collapse;font-size:13px}'+
+    'th,td{border:1px solid #999;padding:6px 8px;text-align:left;vertical-align:top}'+
+    'th{background:#E8F7D0}'+
+    'tr{page-break-inside:avoid}'+
+    '@media print{.bar{display:none}body{padding:0}}'+
+    '</style></head><body>'+
+    '<div class="bar"><button onclick="window.print()">印刷 / PDF保存</button><button class="g" onclick="window.close()">閉じる</button></div>'+
+    '<h1>'+escHtml(m.title)+'</h1>'+
+    '<div class="meta">日付：'+(m.date?fmtDate(m.date):'未設定')+(m.members?'　／　参加者：'+escHtml(m.members):'')+'</div>'+
+    '<h2>議事録</h2><div class="body">'+escHtml(m.body)+'</div>'+
+    taskHtml+'</body></html>';
+  const w=window.open('','_blank');
+  if(!w){alert('ポップアップがブロックされました。許可してもう一度押してください。');return;}
+  w.document.open();w.document.write(html);w.document.close();
 }
 function editMinutesDetail(id){
   const m=minutesList.find(x=>x.id===id);if(!m)return;
