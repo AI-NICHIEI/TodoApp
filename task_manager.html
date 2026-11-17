@@ -543,7 +543,7 @@ async function saveTaskEdit(id){
     await dbUpdateTask(id,{title,person,due:due||null,progress:progress||null});
     const idx=tasks.findIndex(t=>t.id===id);
     if(idx>-1){tasks[idx].title=title;tasks[idx].person=person;tasks[idx].due=due;tasks[idx].progress=progress;}
-    renderAll();closeModal();
+    renderAll();afterTaskModal();
   }catch(e){alert('保存エラー: '+e.message);}
 }
 async function changeStatus(id,s){
@@ -551,15 +551,19 @@ async function changeStatus(id,s){
     await dbUpdateTask(id,{status:s});
     const idx=tasks.findIndex(t=>t.id===id);
     if(idx>-1)tasks[idx].status=s;
-    renderAll();closeModal();
+    renderAll();afterTaskModal();
   }catch(e){alert('更新エラー: '+e.message);}
 }
 async function deleteTask(id){
   if(!confirm('削除しますか？'))return;
-  try{await dbDeleteTask(id);tasks=tasks.filter(t=>t.id!==id);renderAll();closeModal();}
+  try{await dbDeleteTask(id);tasks=tasks.filter(t=>t.id!==id);renderAll();afterTaskModal();}
   catch(e){alert('削除エラー: '+e.message);}
 }
-function closeModal(e){if(!e||e.target.classList.contains('modal-bg'))document.getElementById('modal-area').innerHTML='';}
+let taskReturnMinutes=null;
+function closeModal(e){if(!e||e.target.classList.contains('modal-bg')){document.getElementById('modal-area').innerHTML='';taskReturnMinutes=null;}}
+function afterTaskModal(){const m=taskReturnMinutes;closeModal();if(m)openMinutesDetail(m);}
+function linkedTasksOf(m){const ids=parseIds(m.task_ids).map(String);return tasks.filter(t=>ids.includes(String(t.id))||(t.minutes_id!=null&&String(t.minutes_id)===String(m.id)));}
+function openTaskFromMinutes(tid,mid){taskReturnMinutes=mid;openTask(tid);}
 
 // ---- 議事録 ----
 function renderMinutes(){
@@ -582,14 +586,13 @@ function renderMinutes(){
 }
 function openMinutesDetail(id){
   const m=minutesList.find(x=>x.id===id);if(!m)return;
-  const ids=parseIds(m.task_ids).map(String);
-  const linked=tasks.filter(t=>ids.includes(String(t.id)));
+  const linked=linkedTasksOf(m);
   let th='';
   if(linked.length){
-    th='<div style="margin-bottom:12px"><div class="info-label" style="margin-bottom:6px">関連タスク（'+linked.length+'件）</div>';
+    th='<div style="margin-bottom:12px"><div class="info-label" style="margin-bottom:6px">関連タスク（'+linked.length+'件）<span style="font-weight:400;color:#888">　タップで編集</span></div>';
     linked.forEach(t=>{
       const dl=daysLabel(t.due,t.status);
-      th+='<div class="task-chip"><span class="status-dot '+statusDot(t.status)+'" style="width:7px;height:7px"></span>'+
+      th+='<div class="task-chip" style="cursor:pointer" onclick="openTaskFromMinutes('+t.id+','+id+')"><span class="status-dot '+statusDot(t.status)+'" style="width:7px;height:7px"></span>'+
         escHtml(parsePersons(t.person).join('・'))+'：'+escHtml(t.title)+
         '<span class="days-badge '+dl.cls+'" style="font-size:10px;padding:2px 7px">'+dl.txt+'</span></div>';
     });
@@ -604,6 +607,7 @@ function openMinutesDetail(id){
     '<span class="meta-chip"><i class="ti ti-calendar"></i>'+fmtDate(m.date)+'</span>'+
     (m.members?'<span class="meta-chip"><i class="ti ti-users"></i>'+escHtml(m.members)+'</span>':'')+
     '</div>'+th+
+    '<button class="big-btn btn-sky" style="margin:0 0 12px" onclick="openAddTaskToMinutes('+id+')"><i class="ti ti-plus"></i>この議事録に関連タスクを追加</button>'+
     '<div class="info-label" style="margin-bottom:6px">議事録</div>'+
     '<div class="minutes-body" style="white-space:normal">'+mdToHtml(m.body)+'</div>'+
     '<button class="big-btn btn-primary" onclick="printMinutes('+id+')"><i class="ti ti-printer"></i>印刷・PDF用の画面を開く</button>'+
@@ -611,6 +615,35 @@ function openMinutesDetail(id){
     '<button class="big-btn btn-danger" onclick="deleteMinutesItem('+id+')"><i class="ti ti-trash"></i>この議事録を削除</button>'+
     '<button class="big-btn btn-gray" onclick="closeModal()"><i class="ti ti-x"></i>閉じる</button>'+
     '</div></div>';
+}
+function openAddTaskToMinutes(mid){
+  const m=minutesList.find(x=>x.id===mid);if(!m)return;
+  document.getElementById('modal-area').innerHTML=
+    '<div class="modal-bg" onclick="closeModal(event)"><div class="modal">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:8px">'+
+    '<h3 style="margin-bottom:0;font-size:16px;color:var(--main-dark)"><i class="ti ti-plus"></i> 関連タスクを追加</h3>'+
+    '<button onclick="openMinutesDetail('+mid+')" style="background:none;border:none;font-size:26px;color:#ccc;cursor:pointer;line-height:1">&times;</button></div>'+
+    '<div style="font-size:12px;color:#888;margin-bottom:10px">議事録：'+escHtml(m.title)+'</div>'+
+    '<div class="form-row"><label>タスク内容</label><textarea id="atm-title" style="width:100%;padding:10px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;font-size:14px;font-family:inherit;min-height:70px;resize:vertical"></textarea></div>'+
+    '<div class="form-row"><label>担当者</label><div class="person-cb-grid" id="atm-person-grid"></div></div>'+
+    '<div class="form-row"><label>期限（任意）</label><input id="atm-due" type="date" style="width:100%;padding:10px;border-radius:10px;border:2px solid var(--border);background:#FAFEF4;font-size:15px;font-family:inherit"></div>'+
+    '<button class="big-btn btn-primary" onclick="saveTaskToMinutes('+mid+')"><i class="ti ti-check"></i>追加する</button>'+
+    '<button class="big-btn btn-gray" onclick="openMinutesDetail('+mid+')"><i class="ti ti-x"></i>キャンセル</button>'+
+    '</div></div>';
+  buildPersonCheckboxes('atm-person-grid','atmcb-',[]);
+}
+async function saveTaskToMinutes(mid){
+  const title=document.getElementById('atm-title').value.trim();
+  if(!title){alert('タスク内容を入力してください');return;}
+  const person=JSON.stringify(collectPersons('atmcb-'));
+  const due=document.getElementById('atm-due').value;
+  try{
+    const saved=await dbInsertTask({title,person,due,status:'todo',from_meeting:true,minutes_id:mid});
+    tasks.push(saved);
+    const m=minutesList.find(x=>x.id===mid);
+    if(m){const ids=parseIds(m.task_ids);ids.push(saved.id);m.task_ids=ids;await dbUpdateMinutesTaskIds(mid,ids);}
+    renderAll();openMinutesDetail(mid);
+  }catch(e){alert('追加エラー: '+e.message);}
 }
 function mdToHtml(src){
   const inl=s=>escHtml(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
@@ -637,8 +670,7 @@ function mdToHtml(src){
 }
 function printMinutes(id){
   const m=minutesList.find(x=>x.id===id);if(!m)return;
-  const ids=parseIds(m.task_ids).map(String);
-  const linked=tasks.filter(t=>ids.includes(String(t.id)));
+  const linked=linkedTasksOf(m);
   let rows='';
   linked.forEach(t=>{
     rows+='<tr><td>'+escHtml(parsePersons(t.person).join('・'))+'</td><td>'+escHtml(t.title)+'</td><td>'+(t.due?fmtDate(t.due):'未設定')+'</td><td>'+statusLabel(t.status)+'</td></tr>';
